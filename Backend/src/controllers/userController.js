@@ -137,9 +137,18 @@ const updateProfile = async (req, res) => {
 };
 
 const getOnlineUsers = async (req, res) => {
-  const keys = await redisClient.keys("online:*");
-  const userIds = keys.map((key) => key.split(":")[1]);
-  res.json(userIds);
+  try {
+    const users = await User.find().select("username email status");
+    res.json(users);
+  } catch (err) {
+    console.error("Error fetching users:", err);
+    res.status(500).json({ error: "Failed to fetch users" });
+  }
+
+  // console.log(data);
+  // const keys = await redisClient.keys("online:*");
+  // const userName = keys.map((key) => key.split(":")[1]);
+  // res.json(userName);
 };
 module.exports = {
   registerUser,

@@ -7,6 +7,7 @@ const jwt = require("jsonwebtoken");
 const redisClient = require("./config/redis");
 const userRouter = require("./routes/userRoute");
 require("dotenv").config();
+const User = require("./models/User");
 
 //App config
 const app = express();
@@ -40,6 +41,7 @@ const io = new Server(server, {
 });
 
 io.use((socket, next) => {
+  console.log("testing");
   const token = socket.handshake.auth.token;
   // console.log("Connection attempt with token:", token); // Debug log
 
@@ -57,17 +59,45 @@ io.use((socket, next) => {
   }
 });
 
+// map (userId -> socketId)
+
+const userSocketMap = new Map();
+
 io.on("connection", async (socket) => {
   const userId = socket.userId;
+  userSocketMap.set(userId, socket.id);
+  const user = await User.findById(userId).select("username");
 
-  await redisClient.set(`online:${userId}`, "true");
+  const userName = user.username;
+  await redisClient.set(`onlineUsersId:${userId}`, "true"); // added for tracking the real online user
+  await redisClient.set(`online:${userName}`, "true");
+  await User.findByIdAndUpdate({ _id: userId }, { status: "online" });
 
-  socket.broadcast.emit("user-online", { userId });
+  io.emit("user-online", { userName });
 
-  socket.on("disconnect", async () => {
-    await redisClient.del(`online:${userId}`);
-    socket.broadcast.emit("user-offline", { userId });
+  socket.on("logout", async () => {
+    await redisClient.del(`online:${userName}`);
+    await redisClient.del(`onlineUsersId:${userId}`);
+    userSocketMap.delete(userId);
+    await User.findOneAndUpdate(
+      { _id: userId },
+      {
+        status: "offline",
+      }
+    );
+    io.emit("user-offline", { userName });
   });
+
+  // socket.on("disconnect", async () => {
+  //   await redisClient.del(`online:${userName}`);
+  //   // await User.findOneAndUpdate(
+  //   //   { _id: userId },
+  //   //   {
+  //   //     status: "offline",
+  //   //   }
+  //   // );
+  //   io.emit("user-offline", { userName });
+  // });
 });
 
 // API endpoints
