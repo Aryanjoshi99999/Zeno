@@ -10,6 +10,7 @@ function App() {
   const [password, setPassword] = useState("");
   const [login, setLogin] = useState(false);
   const [onlineUsers, setOnlineUsers] = useState([]);
+  const [selectedUser, setSelectedUser] = useState();
 
   useEffect(() => {
     if (!token) {
@@ -28,15 +29,13 @@ function App() {
       getOnlineUsers();
     });
 
-    newSocket.on("user-online", ({ userId }) => {
-      console.log(`${userId} came online`);
+    newSocket.on("user-online", ({ userName }) => {
+      console.log(`${userName} came online`);
       console.log("Socket connected with ID:", newSocket.id);
-      getOnlineUsers();
     });
 
-    newSocket.on("user-offline", ({ userId }) => {
-      console.log(`${userId} went offline`);
-      getOnlineUsers();
+    newSocket.on("user-offline", ({ userName }) => {
+      console.log(`${userName} went offline`);
     });
 
     setSocket(newSocket);
@@ -44,6 +43,7 @@ function App() {
     return () => {
       newSocket.disconnect();
       console.log("disconnected");
+      getOnlineUsers();
     };
   }, [token]);
 
@@ -64,14 +64,9 @@ function App() {
         },
       }
     );
-    // return (
-    //   <ul>
-    //     {data.map((user, index) => {
-    //       <li key={index}>{user}</li>;
-    //     })}
-    //   </ul>
-    // );
-    //)
+
+    console.log(data);
+
     setOnlineUsers(data.data);
   }
 
@@ -87,10 +82,9 @@ function App() {
         }
       );
 
-      setLogin(true);
-
       // const data = await response.json();
       const newToken = response.data.data.token;
+      setLogin(true);
 
       localStorage.setItem("token", newToken);
 
@@ -108,6 +102,7 @@ function App() {
 
     try {
       if (socket) {
+        socket.emit("logout");
         socket.disconnect();
       }
 
@@ -121,15 +116,41 @@ function App() {
       console.error("Logout error:", err.message);
     }
   };
+
+  const handleSelectedUser = async (user) => {
+    console.log(user.username);
+    setSelectedUser(user);
+  };
+
+  const handleMessage = async () => {
+    alert("message alert");
+  };
   return (
     <div className="app-container">
       {login ? (
         <div className="logged-in">
           <ul>
             {onlineUsers.map((user, index) => (
-              <li key={index}>{user}</li>
+              <li key={user._id} onClick={() => handleSelectedUser(user)}>
+                {user.username} - {user.status}
+              </li>
             ))}
           </ul>
+          {selectedUser ? (
+            <div className="Selected-User">
+              <div className="Selected-User-Username">
+                {selectedUser.userName}
+              </div>
+              <div className="Selected-User-MessageBox">
+                <div>
+                  <input type="text" />
+                  <button onClick={handleMessage}>Send</button>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div>kindly select a user to communicate </div>
+          )}
 
           <button type="submit" onClick={handleLogout}>
             Logout
