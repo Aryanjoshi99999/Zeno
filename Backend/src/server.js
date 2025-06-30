@@ -162,14 +162,14 @@ io.on("connection", async (socket) => {
 //   });
 // });
 
-subClient.pSubscribe("chat:*", (channel, message) => {
-  console.log(message);
-  console.log(channel);
-  const chatId = channel.split(":")[1];
-  const parsedMessage = JSON.parse(message);
+// subClient.pSubscribe("chat:*", (channel, message) => {
+//   console.log(message);
+//   console.log(channel);
+//   const chatId = channel.split(":")[1];
+//   const parsedMessage = JSON.parse(message);
 
-  io.to(chatId).emit("new_message", parsedMessage);
-});
+//   io.to(chatId).emit("new_message", parsedMessage);
+// });
 
 // API endpoints
 
