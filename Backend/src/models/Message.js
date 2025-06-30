@@ -9,7 +9,7 @@ const messageSchema = new mongoose.Schema(
     },
     sender: {
       type: ObjectId,
-      ref: "User",
+      ref: "user",
       required: true,
     },
     content: {
@@ -20,7 +20,7 @@ const messageSchema = new mongoose.Schema(
     type: {
       type: String,
       enum: ["text", "image", "file", "video"],
-      default: text,
+      default: "text",
     },
     attachments: [
       {
@@ -33,7 +33,7 @@ const messageSchema = new mongoose.Schema(
     readBy: [
       {
         type: ObjectId,
-        ref: "User",
+        ref: "user",
       },
     ],
     deleted: {

@@ -4,10 +4,13 @@ const http = require("http");
 const { Server } = require("socket.io");
 const cors = require("cors");
 const jwt = require("jsonwebtoken");
-const redisClient = require("./config/redis");
+const { redisClient, pubClient, subClient } = require("./config/redis");
 const userRouter = require("./routes/userRoute");
 require("dotenv").config();
 const User = require("./models/User");
+const Chat = require("./models/Chat");
+const Message = require("./models/Message");
+const { channel } = require("diagnostics_channel");
 
 //App config
 const app = express();
@@ -41,7 +44,7 @@ const io = new Server(server, {
 });
 
 io.use((socket, next) => {
-  console.log("testing");
+  // console.log("testing");
   const token = socket.handshake.auth.token;
   // console.log("Connection attempt with token:", token); // Debug log
 
@@ -52,6 +55,7 @@ io.use((socket, next) => {
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    // console.log(decoded);
     socket.userId = decoded.id;
     next();
   } catch (error) {
@@ -98,6 +102,73 @@ io.on("connection", async (socket) => {
   //   // );
   //   io.emit("user-offline", { userName });
   // });
+
+  socket.on("send_message", async ({ chatId, content, type }) => {
+    const senderId = socket.userId;
+
+    const chat = await Chat.findById(chatId).populate(
+      "participants",
+      "_id username"
+    );
+    // console.log(chat);
+    if (!chat) return;
+
+    const message = await Message.create({
+      chatId,
+      sender: senderId,
+      content,
+      type,
+    });
+
+    // console.log(message);
+
+    //sending the message
+    const fullMessage = await message.populate("sender", "username _id");
+
+    chat.participants.forEach((user) => {
+      const recieverSocketId = userSocketMap.get(user._id.toString());
+      if (recieverSocketId) {
+        console.log("📤 Emitting message to:", recieverSocketId);
+        console.log("📤 Message:", message);
+        io.to(recieverSocketId).emit("new_message", fullMessage);
+      }
+    });
+  });
+
+//   socket.on("send_message", async ({ chatId, content, type }) => {
+//     const senderId = socket.userId;
+
+//     const chat = await Chat.findById(chatId).populate(
+//       "participants",
+//       "_id username"
+//     );
+//     // console.log(chat);
+//     if (!chat) return;
+
+//     const message = await Message.create({
+//       chatId,
+//       sender: senderId,
+//       content,
+//       type,
+//     });
+
+//     // console.log(message);
+
+//     //sending the message
+//     const fullMessage = await message.populate("sender", "username _id");
+
+//     // Publishing to the channel with name chat:{chatId}
+//     await pubClient.publish(`chat:{chatId}`, JSON.stringify(fullMessage));
+//   });
+// });
+
+subClient.pSubscribe("chat:*", (channel, message) => {
+  console.log(message);
+  console.log(channel);
+  const chatId = channel.split(":")[1];
+  const parsedMessage = JSON.parse(message);
+
+  io.to(chatId).emit("new_message", parsedMessage);
 });
 
 // API endpoints

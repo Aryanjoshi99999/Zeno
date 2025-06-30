@@ -22,8 +22,8 @@ const userSchema = new mongoose.Schema(
     profilePicture: String,
     status: { type: String, enum: ["offline", "online"], default: "offline" },
     lastSeen: Date,
-    friends: [{ type: ObjectId, ref: "User" }],
-    blockedUsers: [{ type: ObjectId, ref: "User" }],
+    friends: [{ type: ObjectId, ref: "user" }],
+    blockedUsers: [{ type: ObjectId, ref: "user" }],
   },
   { timestamps: true }
 );

@@ -11,7 +11,7 @@ const chatSchema = new mongoose.Schema(
     participants: [
       {
         type: ObjectId,
-        ref: "User",
+        ref: "user",
         required: true,
       },
     ],
@@ -26,12 +26,12 @@ const chatSchema = new mongoose.Schema(
     },
     createdBy: {
       type: ObjectId,
-      ref: "User",
+      ref: "user",
     },
     admins: [
       {
         type: ObjectId,
-        ref: "User",
+        ref: "user",
       },
     ],
     lastMessage: {

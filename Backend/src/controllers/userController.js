@@ -1,6 +1,9 @@
 const User = require("../models/User");
 const { generateToken } = require("../utils/authUtils");
 const redisClient = require("../config/redis");
+const Chat = require("../models/Chat");
+const Message = require("../models/Message");
+const mongoose = require("mongoose");
 
 const registerUser = async (req, res) => {
   try {
@@ -150,10 +153,75 @@ const getOnlineUsers = async (req, res) => {
   // const userName = keys.map((key) => key.split(":")[1]);
   // res.json(userName);
 };
+
+const accessChat = async (req, res) => {
+  const { recipientId } = req.body;
+  const senderId = req.user._id;
+
+  if (!recipientId) {
+    return res
+      .status(400)
+      .json({ success: false, error: "recipientId is required" });
+  }
+
+  try {
+    let chat = await Chat.findOne({
+      type: "private",
+      participants: { $all: [senderId, recipientId], $size: 2 },
+    });
+
+    if (!chat) {
+      chat = await Chat.create({
+        type: "private",
+        participants: [senderId, recipientId],
+      });
+    }
+
+    res.status(200).json({ success: true, chatId: chat._id });
+  } catch (error) {
+    res.status(500).json({ success: false, error: "Server error" });
+  }
+};
+
+const getMessages = async (req, res) => {
+  const { recipientId } = req.query;
+  const senderId = req.user._id;
+
+  if (!recipientId) {
+    return res
+      .status(400)
+      .json({ success: false, error: "recipientId is required" });
+  }
+
+  try {
+    let chat = await Chat.findOne({
+      type: "private",
+      participants: {
+        $all: [senderId, recipientId],
+        $size: 2,
+      },
+    });
+
+    if (!chat || chat.length === 0) {
+      return res.status(404).json({ success: false, error: "No chat found" });
+    }
+
+    const messages = await Message.find({ chatId: chat._id })
+      .populate("sender", "username _id")
+      .populate("chatId");
+
+    res.status(200).json({ success: true, messages });
+  } catch (err) {
+    console.error("Error fetching messages:", err.message);
+    res.status(500).json({ success: false, error: "Server error" });
+  }
+};
 module.exports = {
   registerUser,
   loginUser,
   getProfile,
   updateProfile,
   getOnlineUsers,
+  accessChat,
+  getMessages,
 };
