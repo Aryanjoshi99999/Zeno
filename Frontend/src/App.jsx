@@ -215,6 +215,7 @@ function App() {
     console.log(mesres);
     const chatId = res.data.chatId;
     setChatId(chatId);
+    socket.emit("join_chat", chatId);
     setMessages(
       [...mesres.data.messages].sort(
         (a, b) => new Date(a.createdAt) - new Date(b.createdAt)
