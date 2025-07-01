@@ -4,7 +4,7 @@ const http = require("http");
 const { Server } = require("socket.io");
 const cors = require("cors");
 const jwt = require("jsonwebtoken");
-const { redisClient, pubClient, subClient } = require("./config/redis");
+const { client, pubClient, subClient } = require("./config/redis");
 const userRouter = require("./routes/userRoute");
 require("dotenv").config();
 const User = require("./models/User");
@@ -25,10 +25,10 @@ app.use(cors());
 app.use(express.json());
 
 //
-redisClient
+client
 
   .set("hello", "world")
-  .then(() => redisClient.get("hello"))
+  .then(() => client.get("hello"))
   .then((val) => console.log("Test redis value", val))
   .catch(console.error);
 
@@ -73,15 +73,20 @@ io.on("connection", async (socket) => {
   const user = await User.findById(userId).select("username");
 
   const userName = user.username;
-  await redisClient.set(`onlineUsersId:${userId}`, "true"); // added for tracking the real online user
-  await redisClient.set(`online:${userName}`, "true");
+  await client.set(`onlineUsersId:${userId}`, "true"); // added for tracking the real online user
+  await client.set(`online:${userName}`, "true");
   await User.findByIdAndUpdate({ _id: userId }, { status: "online" });
+
+  socket.on("join_chat", (chatId) => {
+    socket.join(chatId);
+    console.log(`User ${userId} joined chat ${chatId}`);
+  });
 
   io.emit("user-online", { userName });
 
   socket.on("logout", async () => {
-    await redisClient.del(`online:${userName}`);
-    await redisClient.del(`onlineUsersId:${userId}`);
+    await client.del(`online:${userName}`);
+    await client.del(`onlineUsersId:${userId}`);
     userSocketMap.delete(userId);
     await User.findOneAndUpdate(
       { _id: userId },
@@ -93,7 +98,7 @@ io.on("connection", async (socket) => {
   });
 
   // socket.on("disconnect", async () => {
-  //   await redisClient.del(`online:${userName}`);
+  //   await client.del(`online:${userName}`);
   //   // await User.findOneAndUpdate(
   //   //   { _id: userId },
   //   //   {
@@ -101,6 +106,38 @@ io.on("connection", async (socket) => {
   //   //   }
   //   // );
   //   io.emit("user-offline", { userName });
+  // });
+
+  // socket.on("send_message", async ({ chatId, content, type }) => {
+  //   const senderId = socket.userId;
+
+  //   const chat = await Chat.findById(chatId).populate(
+  //     "participants",
+  //     "_id username"
+  //   );
+  //   // console.log(chat);
+  //   if (!chat) return;
+
+  //   const message = await Message.create({
+  //     chatId,
+  //     sender: senderId,
+  //     content,
+  //     type,
+  //   });
+
+  //   // console.log(message);
+
+  //   //sending the message
+  //   const fullMessage = await message.populate("sender", "username _id");
+
+  //   chat.participants.forEach((user) => {
+  //     const recieverSocketId = userSocketMap.get(user._id.toString());
+  //     if (recieverSocketId) {
+  //       console.log("📤 Emitting message to:", recieverSocketId);
+  //       console.log("📤 Message:", message);
+  //       io.to(recieverSocketId).emit("new_message", fullMessage);
+  //     }
+  //   });
   // });
 
   socket.on("send_message", async ({ chatId, content, type }) => {
@@ -125,51 +162,19 @@ io.on("connection", async (socket) => {
     //sending the message
     const fullMessage = await message.populate("sender", "username _id");
 
-    chat.participants.forEach((user) => {
-      const recieverSocketId = userSocketMap.get(user._id.toString());
-      if (recieverSocketId) {
-        console.log("📤 Emitting message to:", recieverSocketId);
-        console.log("📤 Message:", message);
-        io.to(recieverSocketId).emit("new_message", fullMessage);
-      }
-    });
+    // Publishing to the channel with name chat:{chatId}
+    await pubClient.publish(`chat:${chatId}`, JSON.stringify(fullMessage));
   });
+});
 
-//   socket.on("send_message", async ({ chatId, content, type }) => {
-//     const senderId = socket.userId;
+subClient.pSubscribe("chat:*", (message, channel) => {
+  //console.log(message);
+  console.log(channel);
+  const chatId = channel.split(":")[1];
+  const parsedMessage = JSON.parse(message);
 
-//     const chat = await Chat.findById(chatId).populate(
-//       "participants",
-//       "_id username"
-//     );
-//     // console.log(chat);
-//     if (!chat) return;
-
-//     const message = await Message.create({
-//       chatId,
-//       sender: senderId,
-//       content,
-//       type,
-//     });
-
-//     // console.log(message);
-
-//     //sending the message
-//     const fullMessage = await message.populate("sender", "username _id");
-
-//     // Publishing to the channel with name chat:{chatId}
-//     await pubClient.publish(`chat:{chatId}`, JSON.stringify(fullMessage));
-//   });
-// });
-
-// subClient.pSubscribe("chat:*", (channel, message) => {
-//   console.log(message);
-//   console.log(channel);
-//   const chatId = channel.split(":")[1];
-//   const parsedMessage = JSON.parse(message);
-
-//   io.to(chatId).emit("new_message", parsedMessage);
-// });
+  io.to(chatId).emit("new_message", parsedMessage);
+});
 
 // API endpoints
 
