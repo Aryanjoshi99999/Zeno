@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { io } from "socket.io-client";
 import axios from "axios";
 import "./App.css";
@@ -14,9 +14,12 @@ function App() {
   const [message, setMessage] = useState("");
   const [chatId, setChatId] = useState("");
   const [messages, setMessages] = useState([]);
+
   // testing
   // const [senderId, setSenderId] = useState();
   // const [sender, setSender] = useState();
+  const [cursorObj, setCursorObj] = useState();
+  const messagesRef = useRef();
 
   useEffect(() => {
     if (!token) {
@@ -65,6 +68,15 @@ function App() {
     if (savedUser) {
       setSelectedUser(JSON.parse(savedUser));
     }
+
+    //testing D-12
+    // if (messages.length > 0) {
+    //   const oldest = messages[messages.length - 1];
+    //   console.log("this is oldest:" + oldest);
+    //   setCursorObj(oldest);
+    // }
+
+    //
   }, []);
 
   // not good i guess
@@ -188,6 +200,42 @@ function App() {
     return user ? user.username : "You";
   };
 
+  // const handleSelectedUser = async (user) => {
+  //   const recipientId = user._id;
+
+  //   const res = await axios.post(
+  //     "http://localhost:5000/api/user/access-chat-or-create",
+  //     { recipientId },
+  //     {
+  //       headers: {
+  //         Authorization: `Bearer ${token}`,
+  //       },
+  //     }
+  //   );
+
+  //   const mesres = await axios.get(
+  //     `http://localhost:5000/api/user/getMessages?recipientId=${recipientId}`,
+
+  //     {
+  //       headers: {
+  //         Authorization: `Bearer ${token}`,
+  //       },
+  //     }
+  //   );
+
+  //   console.log(res);
+  //   console.log(mesres);
+  //   const chatId = res.data.chatId;
+  //   setChatId(chatId);
+  //   socket.emit("join_chat", chatId);
+  //   setMessages(
+  //     [...mesres.data.messages].sort(
+  //       (a, b) => new Date(a.createdAt) - new Date(b.createdAt)
+  //     )
+  //   );
+  //   // console.log("Chat ready with ID:", chatId);
+  // };
+
   const handleSelectedUser = async (user) => {
     const recipientId = user._id;
 
@@ -201,26 +249,31 @@ function App() {
       }
     );
 
-    const mesres = await axios.get(
-      `http://localhost:5000/api/user/getMessages?recipientId=${recipientId}`,
+    let url = `http://localhost:5000/api/user/getMessages?recipientId=${recipientId}`;
+    // console.log("this is the cursorObj:" + cursorObj);
+    if (cursorObj) {
+      url += `&cursorObjId=${cursorObj}`;
+    }
 
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      }
-    );
+    // console.log(url);
 
-    console.log(res);
-    console.log(mesres);
+    const mesres = await axios.get(url, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    // console.log(res);
+    // console.log(mesres);
     const chatId = res.data.chatId;
     setChatId(chatId);
     socket.emit("join_chat", chatId);
-    setMessages(
-      [...mesres.data.messages].sort(
-        (a, b) => new Date(a.createdAt) - new Date(b.createdAt)
-      )
-    );
+    const reversedMessages = [...mesres.data.messages].reverse();
+    setMessages(reversedMessages);
+
+    if (reversedMessages.length > 0) {
+      setCursorObj(reversedMessages[0]._id);
+    }
     // console.log("Chat ready with ID:", chatId);
   };
 
@@ -238,6 +291,44 @@ function App() {
 
     setMessage("");
   };
+
+  const handleScroll = async () => {
+    const div = messagesRef.current;
+    if (!div || div.scrollTop !== 0 || !cursorObj || !selectedUser) return;
+
+    try {
+      const recipientId = selectedUser._id;
+      let url = `http://localhost:5000/api/user/getMessages?recipientId=${recipientId}&cursorObjId=${cursorObj}`;
+      const res = await axios.get(url, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      console.log(res);
+      const newMessages = res.data.messages.reverse();
+
+      console.log(newMessages);
+      if (newMessages.length === 0) return;
+
+      const prevHeight = div.scrollHeight;
+      console.log(prevHeight);
+
+      setMessages((prevMessages) => [...newMessages, ...prevMessages]);
+
+      setTimeout(() => {
+        const newHeight = div.scrollHeight;
+        div.scrollTop = newHeight - prevHeight;
+        console.log(div.scrollTop);
+      }, 0);
+
+      const newOldest = newMessages[0];
+      if (newOldest) {
+        setCursorObj(newOldest._id);
+      }
+    } catch (err) {
+      console.error("Failed to fetch older messages:", err.message);
+    }
+  };
   return (
     <div className="app-container">
       {login ? (
@@ -254,7 +345,12 @@ function App() {
               <div className="Selected-User-Username">
                 {selectedUser.username}
               </div>
-              <div className="Messages">
+              <div
+                className="Messages"
+                onScroll={handleScroll}
+                ref={messagesRef}
+                style={{ overflowY: "scroll", maxHeight: "400px" }}
+              >
                 {messages.map((msg, i) => (
                   <div key={i}>
                     <strong>{getUserName(msg.sender._id)}:</strong>{" "}
