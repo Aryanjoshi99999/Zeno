@@ -187,3 +187,14 @@ app.get("/", (req, res) => {
 server.listen(port, () => {
   console.log(`server is started on http://localhost:${port}`);
 });
+
+process.on("SIGINT", async () => {
+  await pubClient.quit();
+  await subClient.quit();
+  await client.quit();
+
+  server.close(() => {
+    console.log("HTTP server closed.");
+    process.exit(0);
+  });
+});

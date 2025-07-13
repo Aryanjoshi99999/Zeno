@@ -183,9 +183,43 @@ const accessChat = async (req, res) => {
   }
 };
 
+// const getMessages = async (req, res) => {
+//   const { recipientId } = req.query;
+//   const senderId = req.user._id;
+
+//   if (!recipientId) {
+//     return res
+//       .status(400)
+//       .json({ success: false, error: "recipientId is required" });
+//   }
+
+//   try {
+//     let chat = await Chat.findOne({
+//       type: "private",
+//       participants: {
+//         $all: [senderId, recipientId],
+//         $size: 2,
+//       },
+//     });
+
+//     if (!chat || chat.length === 0) {
+//       return res.status(404).json({ success: false, error: "No chat found" });
+//     }
+
+//     const messages = await Message.find({ chatId: chat._id })
+//       .populate("sender", "username _id")
+//       .populate("chatId");
+
+//     res.status(200).json({ success: true, messages });
+//   } catch (err) {
+//     console.error("Error fetching messages:", err.message);
+//     res.status(500).json({ success: false, error: "Server error" });
+//   }
+// };
 const getMessages = async (req, res) => {
-  const { recipientId } = req.query;
+  const { recipientId, cursorObjId } = req.query;
   const senderId = req.user._id;
+  console.log(cursorObjId);
 
   if (!recipientId) {
     return res
@@ -206,9 +240,18 @@ const getMessages = async (req, res) => {
       return res.status(404).json({ success: false, error: "No chat found" });
     }
 
-    const messages = await Message.find({ chatId: chat._id })
+    const limit = 25;
+
+    const filter = { chatId: chat._id };
+    if (cursorObjId) {
+      filter._id = { $lt: new mongoose.Types.ObjectId(cursorObjId) };
+    }
+
+    const messages = await Message.find(filter)
       .populate("sender", "username _id")
-      .populate("chatId");
+      .populate("chatId")
+      .sort({ _id: -1 })
+      .limit(limit);
 
     res.status(200).json({ success: true, messages });
   } catch (err) {
