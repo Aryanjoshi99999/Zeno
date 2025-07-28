@@ -21,43 +21,7 @@ function App() {
   const [cursorObj, setCursorObj] = useState();
   const messagesRef = useRef();
 
-  useEffect(() => {
-    if (!token) {
-      return;
-    }
-    const newSocket = io("http://localhost:5000", {
-      auth: {
-        token: localStorage.getItem("token"),
-      },
-    });
-
-    newSocket.on("connect", () => {
-      // console.log("Connected to server");
-      // console.log("Socket connected with ID:", newSocket.id);
-
-      getOnlineUsers();
-    });
-
-    newSocket.on("user-online", ({ userName }) => {
-      // console.log(`${userName} came online`);
-      // console.log("Socket connected with ID:", newSocket.id);
-    });
-
-    newSocket.on("user-offline", ({ userName }) => {
-      // console.log(`${userName} went offline`);
-    });
-
-    // })
-
-    setSocket(newSocket);
-
-    return () => {
-      newSocket.disconnect();
-      // console.log("disconnected");
-      getOnlineUsers();
-    };
-  }, [token]);
-
+  // when the App component mounts it checks for the token, saved user
   useEffect(() => {
     const storedToken = localStorage.getItem("token");
     if (storedToken) {
@@ -69,30 +33,111 @@ function App() {
       setSelectedUser(JSON.parse(savedUser));
     }
 
-    //testing D-12
-    // if (messages.length > 0) {
-    //   const oldest = messages[messages.length - 1];
-    //   console.log("this is oldest:" + oldest);
-    //   setCursorObj(oldest);
-    // }
-
-    //
+    const chatId = localStorage.getItem("chatId");
+    if (chatId) {
+      setChatId(chatId);
+      //testing
+      // doubt: as this is on top, the socket my never be available so the
+      // user is never be able to join the room
+      // if (socket) {
+      //   console.log("the user joined the room:" + chatId);
+      //   socket.emit("join_chat", chatId);
+      // }
+      //
+    }
   }, []);
+
+  useEffect(() => {
+    if (!token) {
+      return;
+    }
+
+    const newSocket = io("http://localhost:5000", {
+      auth: {
+        token: localStorage.getItem("token"),
+      },
+    });
+
+    setSocket(newSocket);
+
+    newSocket.on("connect", () => {
+      console.log("Socket connected");
+
+      // testing
+
+      if (selectedUser) {
+        setSelectedUser(selectedUser);
+      }
+
+      const storedChatId = localStorage.getItem("chatId");
+      if (storedChatId) {
+        console.log("✅ Joining chat room inside connect", storedChatId);
+        newSocket.emit("join_chat", storedChatId);
+      }
+      //
+
+      getUserFriends();
+    });
+
+    newSocket.on("user-online", ({ userName }) => {
+      console.log(userName + "came online");
+    });
+
+    newSocket.on("user-offline", ({ userName }) => {
+      console.log(userName + "came offline");
+    });
+
+    return () => {
+      // testing
+      newSocket.off("new message");
+      newSocket.disconnect();
+      //
+    };
+  }, [token]);
 
   // not good i guess
   useEffect(() => {
-    if (!socket) return;
+    if (!socket) {
+      console.log("no socket is connected");
+      return;
+    }
+    const handleMessage = async (msg) => {
+      if (!socket || !chatId || !token) {
+        console.log("Waiting for socket/chatId/token to be ready");
+        return;
+      }
+      //tesing : route to push the message in the list(of the users messages:<chatId>)
+      console.log("App.jsx the message is received");
+      console.log("updating in the list");
 
-    // if(selectedUser){
+      // try {
+      //   const url = `http://localhost:5000/api/user/list-updator/${msg.chatId}`;
 
-    // }
+      //   await axios.post(
+      //     url,
+      //     { message: msg },
+      //     {
+      //       headers: {
+      //         Authorization: `Bearer ${token}`,
+      //       },
+      //     }
+      //   );
+      // } catch (err) {
+      //   console.error("Failed to update Redis list:", err.message);
+      // }
 
-    const handleMessage = (msg) => {
-      // console.log("New message received", msg);
-      setMessages((prev) =>
-        [...prev, msg].sort(
-          (a, b) => new Date(a.createdAt) - new Date(b.createdAt)
-        )
+      if (msg.chatId !== chatId) {
+        console.log("Message is for another chat, skipping UI update");
+        return;
+      }
+
+      console.log("App.jsx: setting up the message");
+
+      setMessages(
+        (prev) => [...prev, msg]
+        // .sort(
+        //   (a, b) => new Date(a.createdAt) - new Date(b.createdAt)
+        // )
       );
     };
 
@@ -101,7 +146,66 @@ function App() {
     socket.on("new_message", handleMessage);
 
     return () => socket.off("new_message", handleMessage);
-  }, [socket]);
+  }, [socket, chatId]);
+
+  //
+
+  // const handleMessage = async (msg) => {
+  //   if (!socket) {
+  //     console.log("socket is not present");
+  //   }
+  //   if (!chatId) {
+  //     console.log("chatId is not present");
+  //   }
+  //   if (!token) {
+  //     console.log("token  is not present");
+  //   }
+  //   if (!socket || !chatId || !token) return;
+
+  //   //tesing : route to push the message in the list(of the users messages:<chatId>)
+  //   console.log("App.jsx the message is received");
+  //   console.log("updating in the list");
+
+  //   try {
+  //     const url = `http://localhost:5000/api/user/list-updator/${msg.chatId}`;
+
+  //     const res = await axios.post(
+  //       url,
+  //       { message: msg },
+  //       {
+  //         headers: {
+  //           Authorization: `Bearer ${token}`,
+  //         },
+  //       }
+  //     );
+  //   } catch (err) {
+  //     console.error("Failed to update Redis list:", err.message);
+  //   }
+
+  //   if (msg.chatId !== chatId) {
+  //     console.log("Message is for another chat, skipping UI update");
+  //     return;
+  //   }
+
+  //   console.log("App.jsx: setting up the message");
+
+  //   setMessages(
+  //     (prev) => [...prev, msg]
+  //     // .sort(
+  //     //   (a, b) => new Date(a.createdAt) - new Date(b.createdAt)
+  //     // )
+  //   );
+  // };
+
+  // newsocket.on("new_message", handleMessage);
+
+  useEffect(() => {
+    // may be there could be a problem?
+    if (chatId && socket) {
+      console.log("✅ Joining chat room:", chatId);
+      socket.emit("join_chat", chatId);
+    }
+  }, [chatId, socket]);
 
   useEffect(() => {
     if (selectedUser) {
@@ -130,7 +234,7 @@ function App() {
   //   setMessages(mesres.data.messages);
   // }, [messages]);
 
-  async function getOnlineUsers() {
+  async function getUserFriends() {
     const data = await axios.get(
       "http://localhost:5000/api/user/online-users",
       {
@@ -139,13 +243,17 @@ function App() {
         },
       }
     );
-
     console.log(data);
-
     setOnlineUsers(data.data);
-    console.log(onlineUsers);
   }
 
+  // testing
+
+  // async function getPonlineUsersId() {
+  //   const data =
+  // }
+
+  //
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -158,13 +266,12 @@ function App() {
         }
       );
 
-      // const data = await response.json();
       const newToken = response.data.data.token;
       setLogin(true);
 
-      localStorage.setItem("token", newToken);
-
       setToken(newToken);
+
+      localStorage.setItem("token", newToken);
 
       alert("Login successful");
     } catch (err) {
@@ -183,61 +290,30 @@ function App() {
       }
 
       localStorage.removeItem("token");
+      localStorage.removeItem("chatId");
+      localStorage.removeItem("selectedUser");
+      setSelectedUser(null);
       setToken(null);
       setLogin(false);
       setSocket(null);
-
-      // console.log("Logout successful");
     } catch (err) {
       console.error("Logout error:", err.message);
     }
   };
 
   const getUserName = (id) => {
-    //console.log(messages);
     const user = onlineUsers.find((user) => user._id === id);
-    // console.log(user);
+
     return user ? user.username : "You";
   };
 
-  // const handleSelectedUser = async (user) => {
-  //   const recipientId = user._id;
-
-  //   const res = await axios.post(
-  //     "http://localhost:5000/api/user/access-chat-or-create",
-  //     { recipientId },
-  //     {
-  //       headers: {
-  //         Authorization: `Bearer ${token}`,
-  //       },
-  //     }
-  //   );
-
-  //   const mesres = await axios.get(
-  //     `http://localhost:5000/api/user/getMessages?recipientId=${recipientId}`,
-
-  //     {
-  //       headers: {
-  //         Authorization: `Bearer ${token}`,
-  //       },
-  //     }
-  //   );
-
-  //   console.log(res);
-  //   console.log(mesres);
-  //   const chatId = res.data.chatId;
-  //   setChatId(chatId);
-  //   socket.emit("join_chat", chatId);
-  //   setMessages(
-  //     [...mesres.data.messages].sort(
-  //       (a, b) => new Date(a.createdAt) - new Date(b.createdAt)
-  //     )
-  //   );
-  //   // console.log("Chat ready with ID:", chatId);
-  // };
-
   const handleSelectedUser = async (user) => {
     const recipientId = user._id;
+
+    setSelectedUser(user);
+    setMessages([]);
+
+    setCursorObj("");
 
     const res = await axios.post(
       "http://localhost:5000/api/user/access-chat-or-create",
@@ -249,13 +325,14 @@ function App() {
       }
     );
 
+    const chatId = res.data.chatId;
+    setChatId(chatId);
+    localStorage.setItem("chatId", chatId);
+    //testing
+    console.log("the user joined the after user switch");
+    socket.emit("join_chat", chatId);
+    //
     let url = `http://localhost:5000/api/user/getMessages?recipientId=${recipientId}`;
-    // console.log("this is the cursorObj:" + cursorObj);
-    if (cursorObj) {
-      url += `&cursorObjId=${cursorObj}`;
-    }
-
-    // console.log(url);
 
     const mesres = await axios.get(url, {
       headers: {
@@ -263,21 +340,22 @@ function App() {
       },
     });
 
-    // console.log(res);
-    // console.log(mesres);
-    const chatId = res.data.chatId;
-    setChatId(chatId);
-    socket.emit("join_chat", chatId);
     const reversedMessages = [...mesres.data.messages].reverse();
     setMessages(reversedMessages);
 
     if (reversedMessages.length > 0) {
       setCursorObj(reversedMessages[0]._id);
     }
-    // console.log("Chat ready with ID:", chatId);
   };
 
   const sendMessage = async () => {
+    // testing
+    console.log("Trying to send message");
+    console.log("chatId:", chatId);
+    console.log("message:", message);
+    console.log("socket connected?", socket?.connected);
+
+    //
     if (!chatId || !message.trim() || !socket) {
       alert("Missing chat ID or message.");
       return;
@@ -288,7 +366,7 @@ function App() {
       content: message,
       type: "text",
     });
-
+    console.log("erasing the message");
     setMessage("");
   };
 
