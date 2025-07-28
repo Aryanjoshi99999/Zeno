@@ -44,9 +44,7 @@ const io = new Server(server, {
 });
 
 io.use((socket, next) => {
-  // console.log("testing");
   const token = socket.handshake.auth.token;
-  // console.log("Connection attempt with token:", token); // Debug log
 
   if (!token) {
     console.log("No token provided");
@@ -73,6 +71,11 @@ io.on("connection", async (socket) => {
   const user = await User.findById(userId).select("username");
 
   const userName = user.username;
+  //testing
+
+  const res = await client.sAdd("online:users", ` ${userId}`);
+  console.log("the user is pushed to online user list" + res);
+  //
   await client.set(`onlineUsersId:${userId}`, "true"); // added for tracking the real online user
   await client.set(`online:${userName}`, "true");
   await User.findByIdAndUpdate({ _id: userId }, { status: "online" });
@@ -85,9 +88,23 @@ io.on("connection", async (socket) => {
   io.emit("user-online", { userName });
 
   socket.on("logout", async () => {
+    //testing
+    const res = await client.sRem("online:users", `${userName} : ${userId}`);
+    console.log("the user is removed from online user list" + res);
+    //
+
     await client.del(`online:${userName}`);
     await client.del(`onlineUsersId:${userId}`);
     userSocketMap.delete(userId);
+    //testing
+
+    // removing this line
+    //const result = await client.flushAll(); // This flushes all keys in Redis
+    //console.log("Redis FLUSHALL result:", result);
+    //
+
+    // await client.quit();
+
     await User.findOneAndUpdate(
       { _id: userId },
       {
@@ -141,6 +158,7 @@ io.on("connection", async (socket) => {
   // });
 
   socket.on("send_message", async ({ chatId, content, type }) => {
+    console.log("Message received on server:", { chatId, content });
     const senderId = socket.userId;
 
     const chat = await Chat.findById(chatId).populate(
@@ -160,20 +178,36 @@ io.on("connection", async (socket) => {
     // console.log(message);
 
     //sending the message
+
     const fullMessage = await message.populate("sender", "username _id");
 
     // Publishing to the channel with name chat:{chatId}
+    console.log("publishing the message");
     await pubClient.publish(`chat:${chatId}`, JSON.stringify(fullMessage));
   });
 });
 
-subClient.pSubscribe("chat:*", (message, channel) => {
+subClient.pSubscribe("chat:*", async (message, channel) => {
   //console.log(message);
+  console.log("subscribe: message is received");
   console.log(channel);
   const chatId = channel.split(":")[1];
+  console.log("subscribe: the chat id is" + chatId);
   const parsedMessage = JSON.parse(message);
 
+  //testing
+  try {
+    const key = `messages:${chatId}`;
+
+    const res = await client.lPush(key, JSON.stringify(parsedMessage));
+    console.log("the responst in the multiple message bug fix is" + res);
+  } catch (err) {
+    console.log(err);
+  }
+
+  //
   io.to(chatId).emit("new_message", parsedMessage);
+  console.log("subscribe: Message is sent to room");
 });
 
 // API endpoints

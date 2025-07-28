@@ -23,6 +23,10 @@ const userSchema = new mongoose.Schema(
     status: { type: String, enum: ["offline", "online"], default: "offline" },
     lastSeen: Date,
     friends: [{ type: ObjectId, ref: "user" }],
+
+    // testing:
+    friendRequests: [{ type: ObjectId, ref: "user" }],
+    //
     blockedUsers: [{ type: ObjectId, ref: "user" }],
   },
   { timestamps: true }
