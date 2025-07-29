@@ -73,7 +73,7 @@ io.on("connection", async (socket) => {
   const userName = user.username;
   //testing
 
-  const res = await client.sAdd("online:users", ` ${userId}`);
+  const res = await client.sAdd("online:users", `${userId}`);
   console.log("the user is pushed to online user list" + res);
   //
   await client.set(`onlineUsersId:${userId}`, "true"); // added for tracking the real online user
@@ -89,7 +89,7 @@ io.on("connection", async (socket) => {
 
   socket.on("logout", async () => {
     //testing
-    const res = await client.sRem("online:users", `${userName} : ${userId}`);
+    const res = await client.sRem("online:users", `${userId}`);
     console.log("the user is removed from online user list" + res);
     //
 
@@ -99,8 +99,8 @@ io.on("connection", async (socket) => {
     //testing
 
     // removing this line
-    //const result = await client.flushAll(); // This flushes all keys in Redis
-    //console.log("Redis FLUSHALL result:", result);
+    const result = await client.flushAll(); // This flushes all keys in Redis
+    console.log("Redis FLUSHALL result:", result);
     //
 
     // await client.quit();
@@ -123,38 +123,6 @@ io.on("connection", async (socket) => {
   //   //   }
   //   // );
   //   io.emit("user-offline", { userName });
-  // });
-
-  // socket.on("send_message", async ({ chatId, content, type }) => {
-  //   const senderId = socket.userId;
-
-  //   const chat = await Chat.findById(chatId).populate(
-  //     "participants",
-  //     "_id username"
-  //   );
-  //   // console.log(chat);
-  //   if (!chat) return;
-
-  //   const message = await Message.create({
-  //     chatId,
-  //     sender: senderId,
-  //     content,
-  //     type,
-  //   });
-
-  //   // console.log(message);
-
-  //   //sending the message
-  //   const fullMessage = await message.populate("sender", "username _id");
-
-  //   chat.participants.forEach((user) => {
-  //     const recieverSocketId = userSocketMap.get(user._id.toString());
-  //     if (recieverSocketId) {
-  //       console.log("📤 Emitting message to:", recieverSocketId);
-  //       console.log("📤 Message:", message);
-  //       io.to(recieverSocketId).emit("new_message", fullMessage);
-  //     }
-  //   });
   // });
 
   socket.on("send_message", async ({ chatId, content, type }) => {

@@ -167,22 +167,42 @@ const getUsersFriends = async (req, res) => {
   }
 };
 
-//testing but it is a O(N^2) solution
+//testing
 const getPOnlineUsersId = async (req, res) => {
   try {
-    const users = await client.sMembers("online:users");
-    console.log(users);
-    res.json(users);
+    const userId = req.user._id;
+
+    if (!userId) {
+      return res.status(400).json({ msg: "getUsersFriends: userId error" });
+    }
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(400).json({ msg: "getUsersFriends: user error" });
+    }
+
+    const usersFriendsIds = user.friends || [];
+
+    const key = `user:${userId}:friends`;
+    const oset = "online:users";
+    // await client.del(key); // clear old entries
+    await Promise.all(
+      usersFriendsIds.map((id) => client.sAdd(key, id.toString()))
+    );
+
+    const onlineusersfriends = await client.sInter([oset, key]);
+
+    await client.del(key);
+
+    res.json(onlineusersfriends);
   } catch (err) {
     console.error("Error fetching users:", err);
+
     res.status(500).json({ error: "Failed to fetch users" });
   }
-
-  // console.log(data);
-  // const keys = await redisClient.keys("online:*");
-  // const userName = keys.map((key) => key.split(":")[1]);
-  // res.json(userName);
 };
+
+//
 
 const accessChat = async (req, res) => {
   const { recipientId } = req.body;
@@ -510,6 +530,7 @@ module.exports = {
   getProfile,
   updateProfile,
   getUsersFriends,
+  getPOnlineUsersId,
   accessChat,
   getMessages,
   sendFriendRequest,

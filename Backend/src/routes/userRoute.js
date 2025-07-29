@@ -9,6 +9,7 @@ const {
   getMessages,
   sendFriendRequest,
   acceptFriendRequest,
+  getPOnlineUsersId,
   blockUser,
   unBlockUser,
 } = require("../controllers/userController");
@@ -21,6 +22,7 @@ userRouter.post("/login", loginUser);
 userRouter.get("/profile", protect, getProfile);
 userRouter.put("/profile", protect, updateProfile);
 userRouter.get("/online-users", protect, getUsersFriends);
+userRouter.get("/get-status", protect, getPOnlineUsersId);
 userRouter.post("/access-chat-or-create", protect, accessChat);
 userRouter.get("/getMessages", protect, getMessages);
 
