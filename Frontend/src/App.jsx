@@ -14,6 +14,7 @@ function App() {
   const [message, setMessage] = useState("");
   const [chatId, setChatId] = useState("");
   const [messages, setMessages] = useState([]);
+  const [onlineFriends, setOnlineFriends] = useState([]);
 
   // testing
   // const [senderId, setSenderId] = useState();
@@ -77,6 +78,9 @@ function App() {
       //
 
       getUserFriends();
+      //testing
+      getOnlineStatus();
+      //
     });
 
     newSocket.on("user-online", ({ userName }) => {
@@ -248,6 +252,20 @@ function App() {
   }
 
   // testing
+  async function getOnlineStatus() {
+    const data = await axios.get("http://localhost:5000/api/user/get-status", {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    console.log(data);
+    const insert = data.data;
+    console.log(insert);
+    setOnlineFriends(insert);
+  }
+  //
+
+  // testing
 
   // async function getPonlineUsersId() {
   //   const data =
@@ -412,11 +430,25 @@ function App() {
       {login ? (
         <div className="logged-in">
           <ul>
-            {onlineUsers.map((user, index) => (
-              <li key={user._id} onClick={() => setSelectedUser(user)}>
-                {user.username} - {user.status}
-              </li>
-            ))}
+            {onlineUsers.map((user) => {
+              const isOnline = onlineFriends.includes(user._id);
+
+              return (
+                <li key={user._id} onClick={() => setSelectedUser(user)}>
+                  <span
+                    style={{
+                      display: "inline-block",
+                      width: "10px",
+                      height: "10px",
+                      borderRadius: "50%",
+                      marginRight: "8px",
+                      backgroundColor: isOnline ? "green" : "gray",
+                    }}
+                  ></span>
+                  {user.username}
+                </li>
+              );
+            })}
           </ul>
           {selectedUser ? (
             <div className="Selected-User">
