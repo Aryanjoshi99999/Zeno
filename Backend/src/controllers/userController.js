@@ -16,11 +16,20 @@ const registerUser = async (req, res) => {
         .json({ success: false, message: "Please fill all fields" });
     }
 
+    // user name already exist wala system
+
     const userExists = await User.findOne({ email });
     if (userExists) {
       return res
         .status(400)
         .json({ success: false, message: "User already exists" });
+    }
+
+    const userNameExists = await User.findOne({ username });
+    if (userNameExists) {
+      return res
+        .status(400)
+        .json({ success: false, message: "username already exists" });
     }
 
     const user = await User.create({ username, email, password });
@@ -88,10 +97,12 @@ const loginUser = async (req, res) => {
 
 const getProfile = async (req, res) => {
   try {
+    const { userId } = req.params;
+
+    const data = await User.findById(userId).select("-password");
     res.json({
       success: true,
-      message: "user information",
-      data: { user: req.user },
+      data,
     });
   } catch (error) {
     console.error("profile fetch error", error);
@@ -416,7 +427,7 @@ const sendFriendRequest = async (req, res) => {
   receiver.friendRequests.push(senderId);
   await receiver.save();
 
-  res.json({ sender, receiver, success: true, message: "Friend Request sent" });
+  res.json({ success: true, message: "Friend Request sent" });
 };
 
 const acceptFriendRequest = async (req, res) => {
@@ -439,9 +450,33 @@ const acceptFriendRequest = async (req, res) => {
   await receiver.save();
   await sender.save();
 
-  res.json({ sender, receiver, msg: "Friend request accepted" });
+  res.json({ success: true, msg: "Friend request accepted" });
 };
 
+//testing
+
+const getFriendRequests = async (req, res) => {
+  try {
+    const receiverId = req.user._id;
+    const receiver = await User.findById(receiverId);
+    const friendRequestIds = receiver.friendRequests;
+
+    const friendRequestsUserData = await Promise.all(
+      friendRequestIds.map(
+        (userId) => User.findById(userId).select("username email status") // Select only needed fields
+      )
+    );
+
+    return res.status(200).json({ success: true, friendRequestsUserData });
+  } catch (err) {
+    console.error("getFriendRequestsError:", err);
+    return res
+      .status(400)
+      .json({ success: false, msg: "there is an error in getFriendRequests" });
+  }
+};
+
+//
 const blockUser = async (req, res) => {
   const userId = req.user.id;
   const targetId = req.params.targetId;
@@ -506,6 +541,44 @@ const unBlockUser = async (req, res) => {
 };
 //
 
+// testing (for the user search feature)
+
+// Helper function to escape special characters for regex
+const escapeRegex = (string) => {
+  return string.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, "\\$&");
+};
+
+const userSearch = async (req, res) => {
+  try {
+    const { pattern } = req.query;
+
+    if (!pattern) {
+      return res
+        .status(400)
+        .json({ success: false, msg: "Search pattern is required" });
+    }
+
+    const sanitizedPattern = escapeRegex(pattern);
+
+    const searchRegex = new RegExp(`^${sanitizedPattern}`, "i");
+
+    const matchedUsers = await User.find({ username: searchRegex })
+      .select("username email ")
+      .limit(10);
+
+    if (matchedUsers.length === 0) {
+      return res
+        .status(404)
+        .json({ success: false, msg: "No users found matching your search" });
+    }
+
+    return res.status(200).json({ success: true, matchedUsers });
+  } catch (err) {
+    console.error("Error fetching users:", err.message);
+    res.status(500).json({ success: false, error: "Server error" });
+  }
+};
+
 //testing
 
 // const listUpdate = async (req, res) => {
@@ -537,4 +610,6 @@ module.exports = {
   acceptFriendRequest,
   blockUser,
   unBlockUser,
+  userSearch,
+  getFriendRequests,
 };

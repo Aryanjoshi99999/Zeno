@@ -63,36 +63,46 @@ function App() {
 
     newSocket.on("connect", () => {
       console.log("Socket connected");
-
-      // testing
-
-      if (selectedUser) {
-        setSelectedUser(selectedUser);
-      }
-
-      const storedChatId = localStorage.getItem("chatId");
-      if (storedChatId) {
-        console.log("✅ Joining chat room inside connect", storedChatId);
-        newSocket.emit("join_chat", storedChatId);
-      }
-      //
-
       getUserFriends();
       //testing
       getOnlineStatus();
+      const storedChatId = localStorage.getItem("chatId");
+      if (storedChatId) {
+        newSocket.emit("join_chat", storedChatId);
+      }
+      // testing
+
+      const savedUserString = localStorage.getItem("selectedUser");
+      if (savedUserString && chatId) {
+        const savedUser = JSON.parse(savedUserString);
+        handleSelectedUser(savedUser);
+      }
+
+      //
+
       //
     });
 
-    newSocket.on("user-online", ({ userName }) => {
-      console.log(userName + "came online");
+    newSocket.on("user-online", ({ userId }) => {
+      setOnlineFriends((prevFriends) => {
+        if (!prevFriends.includes(userId)) {
+          return [...prevFriends, userId];
+        }
+        return prevFriends;
+      });
     });
 
-    newSocket.on("user-offline", ({ userName }) => {
-      console.log(userName + "came offline");
+    newSocket.on("user-offline", ({ userId }) => {
+      setOnlineFriends((prevFriends) =>
+        // Filter out the friend who went offline
+        prevFriends.filter((id) => id !== userId)
+      );
     });
 
     return () => {
       // testing
+      newSocket.off("user-online");
+      newSocket.off("user-offline");
       newSocket.off("new message");
       newSocket.disconnect();
       //

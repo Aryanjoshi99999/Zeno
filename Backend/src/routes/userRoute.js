@@ -12,6 +12,8 @@ const {
   getPOnlineUsersId,
   blockUser,
   unBlockUser,
+  userSearch,
+  getFriendRequests,
 } = require("../controllers/userController");
 const { protect } = require("../middlewares/authMiddleware");
 const userRouter = express.Router();
@@ -19,18 +21,29 @@ const userRouter = express.Router();
 userRouter.post("/register", registerUser);
 userRouter.post("/login", loginUser);
 
-userRouter.get("/profile", protect, getProfile);
-userRouter.put("/profile", protect, updateProfile);
+userRouter.get("/profile/:userId", protect, getProfile);
+
+// update profile cancelled due to security reasons
+// userRouter.put("/profile", protect, updateProfile);
+//
 userRouter.get("/online-users", protect, getUsersFriends);
 userRouter.get("/get-status", protect, getPOnlineUsersId);
 userRouter.post("/access-chat-or-create", protect, accessChat);
 userRouter.get("/getMessages", protect, getMessages);
 
-//testing
-// userRouter.post("/list-updator/:chatId", protect, listUpdate);
-//
+userRouter.get("/find-user/", protect, userSearch);
 
-userRouter.post("/friend-request/:targetId", protect, sendFriendRequest);
+userRouter.post(
+  "/profile/friend-request/:targetId",
+  protect,
+  sendFriendRequest
+);
+
+// add the getfriendRequest route
+// testing
+userRouter.get("/get-friend-requests", protect, getFriendRequests);
+
+//
 userRouter.post("/accept-request/:senderId", protect, acceptFriendRequest);
 userRouter.post("/block/:targetId", protect, blockUser);
 userRouter.post("/un-block/:targetId", protect, unBlockUser);
