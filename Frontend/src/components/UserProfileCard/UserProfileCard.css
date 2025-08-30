@@ -1,0 +1,61 @@
+.user-profilecard {
+  width: 30rem;
+  background: rgba(255, 255, 255, 0.5);
+  backdrop-filter: blur(15px);
+  -webkit-backdrop-filter: blur(15px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 20px;
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+  padding: 2vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.user-profilecard a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.back-button {
+  background: rgba(255, 255, 255, 0.5);
+  backdrop-filter: blur(15px);
+  -webkit-backdrop-filter: blur(15px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 20px;
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+  padding: 2vh;
+
+  width: 7rem;
+  margin-bottom: 1vw;
+}
+
+.back-button:hover {
+  background: rgba(255, 255, 255, 0.7);
+  transform: scale(1.05);
+}
+
+.profile-username {
+  background: rgba(255, 255, 255, 0.5);
+  backdrop-filter: blur(15px);
+  -webkit-backdrop-filter: blur(15px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 20px;
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+  padding: 2vh;
+
+  margin-bottom: 2vw;
+}
+
+.add-friend-button {
+  width: 100%;
+
+  padding: 12px;
+  border: none;
+  border-radius: 10px;
+  background-color: rgba(106, 0, 133, 0.824);
+  cursor: pointer;
+  font-weight: 600;
+  color: aliceblue;
+  font-size: 1rem;
+  font-family: "Inter", sans-serif;
+}

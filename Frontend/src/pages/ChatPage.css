@@ -1,0 +1,13 @@
+.chat-page-container {
+  height: 92vh;
+  width: 100vw;
+
+  padding: 0.5vw 1vw;
+}
+
+.main-content {
+  display: flex;
+
+  gap: 1vw;
+  height: 100%;
+}

@@ -1,0 +1,52 @@
+.Friend-Requests-Container {
+  display: flex;
+  padding: 4vw;
+  width: 100%;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: center;
+}
+
+.Friend-Requests-User {
+  display: flex;
+  flex-direction: column;
+  background: rgba(255, 255, 255, 0.5);
+  backdrop-filter: blur(15px);
+  -webkit-backdrop-filter: blur(15px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 20px;
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+  padding: 0.3vw;
+  margin-top: 1vw;
+  width: 20vw;
+  justify-content: flex-end;
+  align-items: center;
+  overflow: hidden;
+}
+
+.Friend-Requests-Username {
+  margin-top: 1vw;
+  margin-bottom: 1vw;
+
+  font-weight: 600;
+  overflow: hidden;
+}
+
+.Friend-Requests-User-button {
+  border: none;
+  border-radius: 14px;
+  background-color: rgba(106, 0, 133, 0.824);
+  cursor: pointer;
+  font-weight: 600;
+  color: aliceblue;
+  font-size: 1rem;
+  font-family: "Inter", sans-serif;
+  padding: 0.5vw;
+  transition: background-color 0.3s ease, box-shadow 0.5s ease;
+  width: 100%;
+}
+
+.Friend-Requests-User-button:hover {
+  background-color: rgba(126, 20, 153, 0.9);
+  box-shadow: 0 4px 25px rgba(72, 1, 180, 0.6);
+}
