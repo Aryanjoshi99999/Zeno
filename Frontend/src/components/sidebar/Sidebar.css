@@ -134,6 +134,24 @@
 .conversation-item.active .conversation-snippet {
   color: #eee;
 }
+.conversation-details {
+  width: 100%;
+}
+.converation-nandum {
+  display: flex;
+  width: 100%;
+  justify-content: space-between;
+}
+
+.conversation-unreadM {
+  background: rgba(255, 255, 255, 0.5);
+  backdrop-filter: blur(15px);
+  -webkit-backdrop-filter: blur(15px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 5px;
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+  padding: 0.5vh;
+}
 
 .conversation-name {
   font-weight: 500;

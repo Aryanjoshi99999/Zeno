@@ -17,6 +17,8 @@ const Sidebar = () => {
     setSearchClicked,
     searchPeople,
     searchResult,
+    unreadCounts,
+    userChatMap,
   } = useChat();
 
   const displayUsers =
@@ -108,15 +110,22 @@ const Sidebar = () => {
         </div>
       </div>
       <div className="conversation-list">
-        {displayUsers.map((user) => (
-          <ConversationItem
-            key={user._id}
-            user={user}
-            isSelected={selectedUser?._id === user._id}
-            onClick={() => handleSelectedUser(user)}
-            isOnline={onlineFriends.includes(user._id)}
-          />
-        ))}
+        {displayUsers.map((user) => {
+          const chatIdForUser = userChatMap[user._id];
+          const unrCount = unreadCounts[chatIdForUser] || 0;
+          console.log(userChatMap);
+
+          return (
+            <ConversationItem
+              key={user._id}
+              unrCount={unrCount}
+              user={user}
+              isSelected={selectedUser?._id === user._id}
+              onClick={() => handleSelectedUser(user)}
+              isOnline={onlineFriends.includes(user._id)}
+            />
+          );
+        })}
       </div>
       <button onClick={handleLogout} className="logout-button">
         Logout

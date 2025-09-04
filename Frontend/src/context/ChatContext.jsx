@@ -38,6 +38,14 @@ export const ChatProvider = ({ children }) => {
   const searchTimeoutRef = useRef(null);
   const [searchClicked, setSearchClicked] = useState(false);
 
+  //testing
+  const [chatIds, setChatIds] = useState([]);
+  const [unreadCounts, setUnreadCounts] = useState({});
+
+  const [userChatMap, setUserChatMap] = useState({});
+
+  //
+
   // Socket Connection Effect
 
   useEffect(() => {
@@ -71,7 +79,10 @@ export const ChatProvider = ({ children }) => {
       console.log("Socket connected");
       getUserFriends();
       getOnlineStatus();
+      newSocket.emit("get_all_unread_counts");
     });
+
+    createUserChatMap();
 
     newSocket.on("user-online", ({ userId }) => {
       setOnlineFriends((prevFriends) => {
@@ -87,9 +98,14 @@ export const ChatProvider = ({ children }) => {
         prevFriends.filter((id) => id !== userId)
       );
     });
+
+    newSocket.on("all_unread_counts", (counts) => {
+      setUnreadCounts(counts);
+    });
     return () => {
       newSocket.off("user-online");
       newSocket.off("user-offline");
+      newSocket.off("all_unread_counts");
       newSocket.disconnect();
     };
   }, [token]);
@@ -124,15 +140,23 @@ export const ChatProvider = ({ children }) => {
       if (typingChatId !== chatId) return;
       setTypingUsers((prev) => prev.filter((user) => user.userId !== userId));
     };
+    const handleUnreadMessagesCount = ({ chatId, newCount }) => {
+      setUnreadCounts((prev) => ({
+        ...prev,
+        [chatId]: newCount,
+      }));
+    };
 
     socket.on("new_message", handleMessage);
     socket.on("typing", handleTyping);
     socket.on("stop_typing", handleStopTyping);
+    socket.on("unread_count_update", handleUnreadMessagesCount);
 
     return () => {
       socket.off("new_message", handleMessage);
       socket.off("typing", handleTyping);
       socket.off("stop_typing", handleStopTyping);
+      socket.off("unread_count_update", handleUnreadMessagesCount);
     };
   }, [socket, chatId]);
 
@@ -162,6 +186,8 @@ export const ChatProvider = ({ children }) => {
         }
       );
       setOnlineUsers(data);
+
+      createUserChatMap(data);
     } catch (error) {
       console.error("Failed to fetch friends:", error);
     }
@@ -222,6 +248,9 @@ export const ChatProvider = ({ children }) => {
           { headers: { Authorization: `Bearer ${token}` } }
         );
         const newChatId = res.data.chatId;
+        socket.emit("active_chat_open", { chatId: newChatId });
+        socket.emit("mark_chat_read", { chatId: newChatId });
+        setUnreadCounts((prev) => ({ ...prev, [newChatId]: 0 }));
         setChatId(newChatId);
         const mesRes = await axios.get(
           `http://localhost:5000/api/user/getMessages?recipientId=${user._id}`,
@@ -278,7 +307,7 @@ export const ChatProvider = ({ children }) => {
 
       const newMessages = res.data.messages.reverse();
 
-      console.log(newMessages);
+      //console.log(newMessages);
       if (newMessages.length === 0) return;
 
       const prevHeight = div.scrollHeight;
@@ -372,6 +401,38 @@ export const ChatProvider = ({ children }) => {
     }, 300);
   };
 
+  //testing
+  const createUserChatMap = async (friends) => {
+    if (!friends || friends.length === 0) return;
+
+    const chatPromises = friends.map((user) =>
+      axios.post(
+        "http://localhost:5000/api/user/access-chat-or-create",
+        { recipientId: user._id },
+        { headers: { Authorization: `Bearer ${token}` } }
+      )
+    );
+
+    try {
+      const responses = await Promise.all(chatPromises);
+
+      const newMap = {};
+      responses.forEach((response, index) => {
+        const friendId = friends[index]._id;
+        const chatId = response.data.chatId;
+        newMap[friendId] = chatId;
+      });
+
+      setUserChatMap(newMap);
+    } catch (error) {
+      console.error("Error creating user-chat map:", error);
+    }
+  };
+
+  //
+
+  // have to make a chatId =>  userId map so that the unread_message_count coming with chatId => count can become userId => count then we can show the things
+
   const value = {
     login,
     token,
@@ -397,13 +458,14 @@ export const ChatProvider = ({ children }) => {
     handleInputChange,
     getTypingMessage,
     onlineFriends,
-
     searchUser,
     setSearchUser,
     searchClicked,
     setSearchClicked,
     searchPeople,
     searchResult,
+    unreadCounts,
+    userChatMap,
   };
 
   return <ChatContext.Provider value={value}>{children}</ChatContext.Provider>;
