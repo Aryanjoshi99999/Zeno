@@ -120,9 +120,38 @@ io.on("connection", async (socket) => {
       const key = `messages:${chatId}`;
       await client.lPush(key, JSON.stringify(fullMessage));
       await client.lTrim(key, 0, 99);
-      console.log(fullMessage);
+      // console.log(fullMessage);
       io.to(chatId).emit("new_message", fullMessage);
       console.log(`Message sent to room ${chatId}`);
+
+      // testing
+      // basically with the help of chatId we will get the receipient id or ids
+      console.log("testing the unread message thing");
+      const chat = await Chat.findById(chatId).select("participants");
+      console.log("chat: " + chat);
+      chat.participants.forEach(async (id) => {
+        if (id.toString() != senderId) {
+          const ackey = `active_chat:${id.toString()}`; // need the the receipient's id
+          const activeChatId = await client.get(ackey); //
+          console.log("activeChatId " + activeChatId);
+          if (activeChatId != chatId) {
+            const uncKey = `unread_counts:${id.toString()}`;
+            const newCount = await client.hIncrBy(uncKey, chatId, 1);
+            io.to(id.toString()).emit("unread_count_update", {
+              chatId,
+              newCount,
+            });
+            console.log(newCount);
+          }
+        }
+        console.log("end fo the unread thing");
+      });
+
+      // if the activeChatId != chatId then need to increment the unread_message_counter:<chatId> <userId> count
+      // then we will send this to the recipient's ui so that it can update according to chatId , the no. of unread
+      // messages per chatId
+
+      //
     } catch (error) {
       console.error("Failed to send message:", error);
 
@@ -131,6 +160,30 @@ io.on("connection", async (socket) => {
       });
     }
   });
+
+  // testing
+  socket.on("get_all_unread_counts", async () => {
+    const unreadCountKey = `unread_counts:${userId}`;
+    const counts = await client.hGetAll(unreadCountKey);
+
+    Object.keys(counts).forEach((key) => {
+      counts[key] = parseInt(counts[key], 10);
+    });
+    socket.emit("all_unread_counts", counts || {});
+    console.log("get all unread counts");
+  });
+
+  socket.on("mark_chat_read", async ({ chatId }) => {
+    const unreadCountKey = `unread_counts:${userId}`;
+    await client.hSet(unreadCountKey, chatId, 0);
+    console.log("make the chat read");
+  });
+
+  socket.on("active_chat_open", ({ chatId }) => {
+    const key = `active_chat:${userId}`;
+    client.set(key, chatId);
+  });
+  //
 
   //typing
   socket.on("typing", ({ chatId }) => {
@@ -147,6 +200,10 @@ io.on("connection", async (socket) => {
       userId: socket.userId,
     });
   });
+
+  //
+
+  //testing
 
   //
 
