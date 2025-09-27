@@ -2,11 +2,13 @@ import React from "react";
 import { useChat } from "../../context/ChatContext";
 
 const ConversationItem = ({
+  key,
   user,
   isSelected,
   onClick,
   isOnline,
   unrCount,
+  lastMessageSnippet,
 }) => {
   return (
     <div
@@ -22,7 +24,7 @@ const ConversationItem = ({
           )}
         </div>
 
-        <p className="conversation-snippet">Last message snippet...</p>
+        <p className="conversation-snippet">{lastMessageSnippet}</p>
 
         {isOnline ? (
           <span className="conversation-isOnline">🟢</span>

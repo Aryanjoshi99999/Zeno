@@ -9,12 +9,24 @@ import React, {
 import { io } from "socket.io-client";
 import axios from "axios";
 
+// testing
+import { jwtDecode } from "jwt-decode";
+
+//
+
 const ChatContext = createContext();
 
 // slow error
 export const useChat = () => {
   return useContext(ChatContext);
 };
+
+// testing
+const backendUrl = process.env.REACT_APP_BACKEND_URL || "http://localhost:5000";
+
+const apiClient = axios.create({ baseURL: backendUrl });
+
+//
 
 export const ChatProvider = ({ children }) => {
   const [socket, setSocket] = useState(null);
@@ -43,7 +55,14 @@ export const ChatProvider = ({ children }) => {
   const [unreadCounts, setUnreadCounts] = useState({});
 
   const [userChatMap, setUserChatMap] = useState({});
+  const [userIdUnrcMap, setUserIdUnrcMap] = useState({});
 
+  //
+
+  //testing
+  const [cChat, setCChat] = useState();
+  const [chats, setChats] = useState([]);
+  const [currentUser, setCurrentUser] = useState(null);
   //
 
   // Socket Connection Effect
@@ -63,9 +82,19 @@ export const ChatProvider = ({ children }) => {
     if (chatId) {
       setChatId(chatId);
     }
+
+    const chat = localStorage.getItem("cChat");
+    if (chat) {
+      setCChat(JSON.parse(chat));
+    }
   }, []);
 
   useEffect(() => {
+    if (token) {
+      apiClient.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+    } else {
+      delete apiClient.defaults.headers.common["Authorization"];
+    }
     if (!token) {
       if (socket) socket.disconnect();
       setSocket(null);
@@ -73,16 +102,14 @@ export const ChatProvider = ({ children }) => {
       return;
     }
     setLogin(true);
-    const newSocket = io("http://localhost:5000", { auth: { token } });
+    const newSocket = io(backendUrl, { auth: { token } });
     setSocket(newSocket);
     newSocket.on("connect", () => {
       console.log("Socket connected");
-      getUserFriends();
-      getOnlineStatus();
-      newSocket.emit("get_all_unread_counts");
-    });
 
-    createUserChatMap();
+      fetchChats();
+      getOnlineStatus();
+    });
 
     newSocket.on("user-online", ({ userId }) => {
       setOnlineFriends((prevFriends) => {
@@ -111,6 +138,15 @@ export const ChatProvider = ({ children }) => {
   }, [token]);
 
   useEffect(() => {
+    if (token) {
+      const decodedToken = jwtDecode(token);
+      setCurrentUser({ _id: decodedToken.id });
+    } else {
+      setCurrentUser(null);
+    }
+  }, [token]);
+
+  useEffect(() => {
     if (!socket) {
       console.log("no socket is connected");
       return;
@@ -121,11 +157,18 @@ export const ChatProvider = ({ children }) => {
         return;
       }
 
-      if (msg.chatId !== chatId) return;
+      setChats((prevChats) =>
+        prevChats.map((chat) =>
+          chat._id === msg.chatId
+            ? { ...chat, lastMessage: msg } // Update the latestMessage
+            : chat
+        )
+      );
 
-      setMessages((prev) => [...prev, msg]);
+      if (msg.chatId === chatId) {
+        setMessages((prev) => [...prev, msg]);
+      }
     };
-
     const handleTyping = ({ typingChatId, userId, username }) => {
       if (typingChatId !== chatId) return;
       setTypingUsers((prev) => {
@@ -161,9 +204,41 @@ export const ChatProvider = ({ children }) => {
   }, [socket, chatId]);
 
   useEffect(() => {
-    if (!socket || !token || !selectedUser) return;
-    handleSelectedUser(selectedUser);
-  }, [socket, token, selectedUser]);
+    if (!socket) return;
+
+    const handleChatUpdated = (updatedChat) => {
+      setChats((prevChats) => {
+        const exists = prevChats.find((chat) => chat._id === updatedChat._id);
+        let newChats;
+
+        if (exists) {
+          newChats = prevChats.map((chat) =>
+            chat._id === updatedChat._id ? updatedChat : chat
+          );
+        } else {
+          newChats = [updatedChat, ...prevChats];
+        }
+
+        return newChats.sort(
+          (a, b) => new Date(b.updatedAt) - new Date(a.updatedAt)
+        );
+      });
+    };
+
+    socket.on("chat_updated", handleChatUpdated);
+
+    return () => socket.off("chat_updated", handleChatUpdated);
+  }, [socket]);
+
+  useEffect(() => {
+    if (!socket) return;
+    socket.emit("get_all_unread_counts");
+  }, [socket]);
+
+  useEffect(() => {
+    if (!socket || !token || !selectedUser || !cChat) return;
+    handleSelectedUser(cChat, selectedUser);
+  }, [socket, token, selectedUser, cChat]);
 
   useEffect(() => {
     if (selectedUser) {
@@ -172,34 +247,30 @@ export const ChatProvider = ({ children }) => {
     if (chatId) {
       localStorage.setItem("chatId", chatId);
     }
-  }, [selectedUser, chatId]);
+    if (cChat) {
+      localStorage.setItem("cChat", JSON.stringify(cChat));
+    }
+  }, [selectedUser, chatId, cChat]);
 
-  // Handler Functions
-
-  const getUserFriends = useCallback(async () => {
+  const fetchChats = useCallback(async () => {
     if (!token) return;
     try {
-      const { data } = await axios.get(
-        "http://localhost:5000/api/user/online-users",
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
-      setOnlineUsers(data);
+      const { data } = await apiClient.get("/api/user/chats");
 
-      createUserChatMap(data);
+      setChats(data);
+      console.log(data);
     } catch (error) {
-      console.error("Failed to fetch friends:", error);
+      console.error("Failed to fetch chats:", error);
     }
   }, [token]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const response = await axios.post(
-        "http://localhost:5000/api/user/login",
-        { email, password }
-      );
+      const response = await apiClient.post("/api/user/login", {
+        email,
+        password,
+      });
       const newToken = response.data.data.token;
       localStorage.setItem("token", newToken);
       setToken(newToken);
@@ -212,10 +283,11 @@ export const ChatProvider = ({ children }) => {
   const handleRegisterSubmit = async (e) => {
     e.preventDefault();
     try {
-      const response = await axios.post(
-        "http://localhost:5000/api/user/register",
-        { username, email, password }
-      );
+      const response = await apiClient.post("/api/user/register", {
+        username,
+        email,
+        password,
+      });
       const newToken = response.data.data.token;
       localStorage.setItem("token", newToken);
       setToken(newToken);
@@ -235,32 +307,36 @@ export const ChatProvider = ({ children }) => {
   };
 
   const handleSelectedUser = useCallback(
-    async (user) => {
+    async (chat, friend) => {
       if (!socket || !token) return;
-
-      setSelectedUser(user);
+      console.log("chat is:", chat);
+      setSelectedUser(friend);
+      setCChat(chat);
       setMessages([]);
       try {
         if (chatId) socket.emit("leave_chat", chatId);
-        const res = await axios.post(
-          "http://localhost:5000/api/user/access-chat-or-create",
-          { recipientId: user._id },
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
-        const newChatId = res.data.chatId;
-        socket.emit("active_chat_open", { chatId: newChatId });
-        socket.emit("mark_chat_read", { chatId: newChatId });
+
+        const newChatId = chat._id;
+
+        if (newChatId) {
+          socket.emit("active_chat_open", { chatId: newChatId });
+          socket.emit("mark_chat_read", { chatId: newChatId });
+        } else {
+          console.log("new chat id is not present");
+        }
+
         setUnreadCounts((prev) => ({ ...prev, [newChatId]: 0 }));
         setChatId(newChatId);
-        const mesRes = await axios.get(
-          `http://localhost:5000/api/user/getMessages?recipientId=${user._id}`,
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          }
+        console.log("Friend system", friend);
+
+        const mesRes = await apiClient.get(
+          `/api/user/getMessages?recipientId=${friend?._id}`
         );
+        console.log(mesRes);
 
         const reversedMessages = mesRes.data.messages.reverse();
         setMessages(reversedMessages);
+
         socket.emit("join_chat", newChatId);
 
         if (reversedMessages.length > 0) {
@@ -272,10 +348,23 @@ export const ChatProvider = ({ children }) => {
         console.error("Error selecting user:", error);
       }
     },
+
     [socket, token, chatId]
   );
 
   const sendMessage = async () => {
+    if (!chatId) {
+      alert("Missing chat ID ");
+      return;
+    }
+    if (!socket) {
+      alert("Missing socket");
+      return;
+    }
+    if (!message) {
+      alert("Missing message");
+      return;
+    }
     if (!chatId || !message.trim() || !socket) {
       alert("Missing chat ID or message.");
       return;
@@ -297,17 +386,13 @@ export const ChatProvider = ({ children }) => {
 
     try {
       const recipientId = selectedUser._id;
-      let url = `http://localhost:5000/api/user/getMessages?recipientId=${recipientId}&cursorObjId=${cursorObj}`;
-      const res = await axios.get(url, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      const res = await apiClient.get(
+        `/api/user/getMessages?recipientId=${recipientId}&cursorObjId=${cursorObj}`
+      );
       console.log("medium");
 
       const newMessages = res.data.messages.reverse();
 
-      //console.log(newMessages);
       if (newMessages.length === 0) return;
 
       const prevHeight = div.scrollHeight;
@@ -359,12 +444,7 @@ export const ChatProvider = ({ children }) => {
   };
 
   async function getOnlineStatus() {
-    const data = await axios.get("http://localhost:5000/api/user/get-status", {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
-    console.log(data);
+    const data = await apiClient.get("/api/user/get-status");
     const insert = data.data;
     setOnlineFriends(insert);
   }
@@ -384,12 +464,9 @@ export const ChatProvider = ({ children }) => {
 
     searchTimeoutRef.current = setTimeout(async () => {
       try {
-        const url = `http://localhost:5000/api/user/find-user?pattern=${query}`;
-        const response = await axios.get(url, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
+        const response = await apiClient.get(
+          `/api/user/find-user?pattern=${query}`
+        );
         setSearchResult(response.data.matchedUsers || []);
       } catch (error) {
         if (error.response && error.response.status === 404) {
@@ -400,38 +477,6 @@ export const ChatProvider = ({ children }) => {
       }
     }, 300);
   };
-
-  //testing
-  const createUserChatMap = async (friends) => {
-    if (!friends || friends.length === 0) return;
-
-    const chatPromises = friends.map((user) =>
-      axios.post(
-        "http://localhost:5000/api/user/access-chat-or-create",
-        { recipientId: user._id },
-        { headers: { Authorization: `Bearer ${token}` } }
-      )
-    );
-
-    try {
-      const responses = await Promise.all(chatPromises);
-
-      const newMap = {};
-      responses.forEach((response, index) => {
-        const friendId = friends[index]._id;
-        const chatId = response.data.chatId;
-        newMap[friendId] = chatId;
-      });
-
-      setUserChatMap(newMap);
-    } catch (error) {
-      console.error("Error creating user-chat map:", error);
-    }
-  };
-
-  //
-
-  // have to make a chatId =>  userId map so that the unread_message_count coming with chatId => count can become userId => count then we can show the things
 
   const value = {
     login,
@@ -466,6 +511,9 @@ export const ChatProvider = ({ children }) => {
     searchResult,
     unreadCounts,
     userChatMap,
+    userIdUnrcMap,
+    chats,
+    currentUser,
   };
 
   return <ChatContext.Provider value={value}>{children}</ChatContext.Provider>;

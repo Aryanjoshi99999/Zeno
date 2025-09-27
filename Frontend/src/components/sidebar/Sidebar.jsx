@@ -6,6 +6,7 @@ import "./Sidebar.css";
 
 const Sidebar = () => {
   const {
+    chats,
     onlineUsers,
     selectedUser,
     handleLogout,
@@ -19,6 +20,8 @@ const Sidebar = () => {
     searchResult,
     unreadCounts,
     userChatMap,
+    userIdUnrcMap,
+    currentUser,
   } = useChat();
 
   const displayUsers =
@@ -110,22 +113,38 @@ const Sidebar = () => {
         </div>
       </div>
       <div className="conversation-list">
-        {displayUsers.map((user) => {
-          const chatIdForUser = userChatMap[user._id];
-          const unrCount = unreadCounts[chatIdForUser] || 0;
-          console.log(userChatMap);
+        {chats && chats.length > 0 ? (
+          chats.map((chat) => {
+            if (!currentUser) {
+              console.log("no current user");
+            }
 
-          return (
-            <ConversationItem
-              key={user._id}
-              unrCount={unrCount}
-              user={user}
-              isSelected={selectedUser?._id === user._id}
-              onClick={() => handleSelectedUser(user)}
-              isOnline={onlineFriends.includes(user._id)}
-            />
-          );
-        })}
+            const friend = chat.participants.find(
+              (p) => p._id !== currentUser._id
+            );
+
+            if (!friend) return null;
+
+            const count = unreadCounts[chat._id] || 0;
+
+            const lastMessage = chat.lastMessage?.content || "No message yet.";
+
+            return (
+              <ConversationItem
+                user={friend}
+                lastMessageSnippet={lastMessage}
+                unrCount={count}
+                isSelected={selectedUser?._id === friend._id}
+                onClick={() => handleSelectedUser(chat, friend)}
+                isOnline={onlineFriends.includes(friend._id)}
+              />
+            );
+          })
+        ) : (
+          <div className="no-conversations">
+            Add some friends to start chatting!
+          </div>
+        )}
       </div>
       <button onClick={handleLogout} className="logout-button">
         Logout
