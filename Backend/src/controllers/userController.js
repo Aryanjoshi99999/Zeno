@@ -151,20 +151,37 @@ const updateProfile = async (req, res) => {
   }
 };
 
+// const getUserChats
+
+const getUsersChats = async (req, res) => {
+  try {
+    // testing
+    const chats = await Chat.find({ participants: req.user._id })
+      .sort({ updatedAt: -1 }) // Sort by most recent activity
+      .populate("participants", "username email status") // Populate user details
+      .populate("lastMessage"); // Populate the last message
+    console.log("chats:", chats);
+    res.json(chats);
+
+    //
+  } catch (err) {
+    console.error("Error fetching users:", err);
+    res.status(500).json({ error: "Failed to fetch chats" });
+  }
+};
+
 const getUsersFriends = async (req, res) => {
   try {
     const userId = req.user._id;
     if (!userId) {
       return res.status(400).json({ msg: "getUsersFriends: userId error" });
     }
-
     const user = await User.findById(userId);
     if (!user) {
       return res.status(400).json({ msg: "getUsersFriends: user error" });
     }
-
     const usersFriendsIds = user.friends || [];
-
+    // N + 1 thing
     const usersFriends = await Promise.all(
       usersFriendsIds.map((id) =>
         User.findById(id).select("username email status")
@@ -450,6 +467,14 @@ const acceptFriendRequest = async (req, res) => {
   await receiver.save();
   await sender.save();
 
+  // testing
+  await Chat.create({
+    type: "private",
+    participants: [senderId, receiverId],
+  });
+
+  //
+
   res.json({ success: true, msg: "Friend request accepted" });
 };
 
@@ -612,4 +637,5 @@ module.exports = {
   unBlockUser,
   userSearch,
   getFriendRequests,
+  getUsersChats,
 };

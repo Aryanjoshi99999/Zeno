@@ -115,6 +115,22 @@ io.on("connection", async (socket) => {
         type,
       });
 
+      // testing
+
+      await Chat.findByIdAndUpdate(chatId, {
+        lastMessage: message._id,
+      });
+
+      const updatedChat = await Chat.findById(chatId)
+        .populate("participants", "username status")
+        .populate("lastMessage")
+        .lean();
+      console.log("updated chat", updatedChat);
+
+      io.to(chatId).emit("chat_updated", updatedChat);
+
+      //
+
       const fullMessage = await message.populate("sender", "username _id");
 
       const key = `messages:${chatId}`;
@@ -128,7 +144,7 @@ io.on("connection", async (socket) => {
       // basically with the help of chatId we will get the receipient id or ids
       console.log("testing the unread message thing");
       const chat = await Chat.findById(chatId).select("participants");
-      console.log("chat: " + chat);
+      // console.log("chat: " + chat);
       chat.participants.forEach(async (id) => {
         if (id.toString() != senderId) {
           const ackey = `active_chat:${id.toString()}`; // need the the receipient's id
@@ -163,17 +179,23 @@ io.on("connection", async (socket) => {
 
   // testing
   socket.on("get_all_unread_counts", async () => {
+    console.log("get all unread counts is getting triggered");
     const unreadCountKey = `unread_counts:${userId}`;
     const counts = await client.hGetAll(unreadCountKey);
-
+    console.log("Before counts", counts);
     Object.keys(counts).forEach((key) => {
       counts[key] = parseInt(counts[key], 10);
     });
+    console.log("after counts", counts);
+
     socket.emit("all_unread_counts", counts || {});
     console.log("get all unread counts");
   });
 
   socket.on("mark_chat_read", async ({ chatId }) => {
+    if (!chatId) {
+      return console.log("mark_chat_read event received without a chatId.");
+    }
     const unreadCountKey = `unread_counts:${userId}`;
     await client.hSet(unreadCountKey, chatId, 0);
     console.log("make the chat read");
