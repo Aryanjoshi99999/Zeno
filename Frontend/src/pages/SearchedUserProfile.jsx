@@ -19,6 +19,13 @@ const SearchedUserProfile = () => {
       try {
         setIsLoading(true);
         const token = localStorage.getItem("token");
+        if (token) {
+          apiClient.defaults.headers.common[
+            "Authorization"
+          ] = `Bearer ${token}`;
+        } else {
+          delete apiClient.defaults.headers.common["Authorization"];
+        }
 
         const response = await apiClient.get(`/api/user/profile/${userId}`);
         setUser(response.data.data);
