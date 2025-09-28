@@ -3,6 +3,10 @@ import { useState, useEffect } from "react";
 import axios from "axios";
 import FriendRequestsContainer from "../components/FriendRequestsContainer/FriendRequestsContainer";
 
+const backendUrl = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
+
+const apiClient = axios.create({ baseURL: backendUrl });
+
 const FriendRequests = () => {
   const [friendRequests, setFriendRequests] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -12,12 +16,15 @@ const FriendRequests = () => {
     const getFriendRequests = async () => {
       try {
         const token = localStorage.getItem("token");
-        const url = `http://localhost:5000/api/user/get-friend-requests`;
-        const response = await axios.get(url, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
+        if (token) {
+          apiClient.defaults.headers.common[
+            "Authorization"
+          ] = `Bearer ${token}`;
+        } else {
+          delete apiClient.defaults.headers.common["Authorization"];
+        }
+
+        const response = await apiClient.get("/api/user/get-friend-requests");
 
         setFriendRequests(response.data.friendRequestsUserData);
       } catch (err) {

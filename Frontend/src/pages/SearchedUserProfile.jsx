@@ -4,6 +4,10 @@ import axios from "axios";
 import UserProfileCard from "../components/UserProfileCard/UserProfileCard";
 import "./SearchedUserProfile.css";
 
+const backendUrl = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
+
+const apiClient = axios.create({ baseURL: backendUrl });
+
 const SearchedUserProfile = () => {
   const { userId } = useParams();
   const [user, setUser] = useState(null);
@@ -15,11 +19,8 @@ const SearchedUserProfile = () => {
       try {
         setIsLoading(true);
         const token = localStorage.getItem("token");
-        const url = `http://localhost:5000/api/user/profile/${userId}`;
 
-        const response = await axios.get(url, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        const response = await apiClient.get(`/api/user/profile/${userId}`);
         setUser(response.data.data);
       } catch (err) {
         console.error("Failed to fetch user", err);
