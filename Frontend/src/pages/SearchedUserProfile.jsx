@@ -3,10 +3,7 @@ import { useParams } from "react-router-dom";
 import axios from "axios";
 import UserProfileCard from "../components/UserProfileCard/UserProfileCard";
 import "./SearchedUserProfile.css";
-
-const backendUrl = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
-
-const apiClient = axios.create({ baseURL: backendUrl });
+import apiClient from "../apiClient";
 
 const SearchedUserProfile = () => {
   const { userId } = useParams();
@@ -18,14 +15,6 @@ const SearchedUserProfile = () => {
     const fetchUserData = async () => {
       try {
         setIsLoading(true);
-        const token = localStorage.getItem("token");
-        if (token) {
-          apiClient.defaults.headers.common[
-            "Authorization"
-          ] = `Bearer ${token}`;
-        } else {
-          delete apiClient.defaults.headers.common["Authorization"];
-        }
 
         const response = await apiClient.get(`/api/user/profile/${userId}`);
         setUser(response.data.data);
