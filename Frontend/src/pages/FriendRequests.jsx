@@ -4,17 +4,18 @@ import axios from "axios";
 import FriendRequestsContainer from "../components/FriendRequestsContainer/FriendRequestsContainer";
 
 import apiClient from "../apiClient";
+import { useChat } from "../context/ChatContext";
 
 const FriendRequests = () => {
   const [friendRequests, setFriendRequests] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
+  const { isAuthReady } = useChat();
 
   useEffect(() => {
     const getFriendRequests = async () => {
       try {
         const response = await apiClient.get("/api/user/get-friend-requests");
-
         setFriendRequests(response.data.friendRequestsUserData);
       } catch (err) {
         console.error("Failed to load friend requests:", err);
@@ -26,8 +27,10 @@ const FriendRequests = () => {
       }
     };
 
-    getFriendRequests();
-  }, []);
+    if (isAuthReady) {
+      getFriendRequests();
+    }
+  }, [isAuthReady]);
 
   const handleRequestAccepted = (userId) => {
     setFriendRequests((currentRequests) =>

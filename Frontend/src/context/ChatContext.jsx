@@ -61,6 +61,7 @@ export const ChatProvider = ({ children }) => {
   const [cChat, setCChat] = useState();
   const [chats, setChats] = useState([]);
   const [currentUser, setCurrentUser] = useState(null);
+  const [isAuthReady, setIsAuthReady] = useState(false);
   //
 
   // Socket Connection Effect
@@ -71,6 +72,7 @@ export const ChatProvider = ({ children }) => {
       setToken(storedToken);
       setLogin(true);
     }
+    setIsAuthReady(true);
     const savedUser = localStorage.getItem("selectedUser");
     if (savedUser) {
       setSelectedUser(JSON.parse(savedUser));
@@ -512,6 +514,7 @@ export const ChatProvider = ({ children }) => {
     userIdUnrcMap,
     chats,
     currentUser,
+    isAuthReady,
   };
 
   return <ChatContext.Provider value={value}>{children}</ChatContext.Provider>;
