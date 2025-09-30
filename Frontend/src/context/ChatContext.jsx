@@ -22,7 +22,7 @@ export const useChat = () => {
 };
 
 // testing
-const backendUrl = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
+const backendUrl = apiClient.defaults.baseURL;
 
 //
 
@@ -91,51 +91,106 @@ export const ChatProvider = ({ children }) => {
 
   useEffect(() => {
     if (token) {
+      // 1. Set the header for all future requests
       apiClient.defaults.headers.common["Authorization"] = `Bearer ${token}`;
-    } else {
-      delete apiClient.defaults.headers.common["Authorization"];
-    }
-    if (!token) {
-      if (socket) socket.disconnect();
-      setSocket(null);
-      setLogin(false);
-      return;
-    }
-    setLogin(true);
-    const newSocket = io(backendUrl, { auth: { token } });
-    setSocket(newSocket);
-    newSocket.on("connect", () => {
-      console.log("Socket connected");
 
-      fetchChats();
-      getOnlineStatus();
-    });
+      // 2. Update auth state
+      setLogin(true);
+      const decodedToken = jwtDecode(token);
+      setCurrentUser({ _id: decodedToken.id });
 
-    newSocket.on("user-online", ({ userId }) => {
-      setOnlineFriends((prevFriends) => {
-        if (!prevFriends.includes(userId)) {
-          return [...prevFriends, userId];
-        }
-        return prevFriends;
+      // 3. Establish socket connection
+      const newSocket = io(backendUrl, { auth: { token } });
+      setSocket(newSocket);
+
+      newSocket.on("connect", () => {
+        console.log("Socket connected");
+        fetchChats();
+        getOnlineStatus();
+        setIsAuthReady(true);
       });
-    });
 
-    newSocket.on("user-offline", ({ userId }) => {
-      setOnlineFriends((prevFriends) =>
-        prevFriends.filter((id) => id !== userId)
-      );
-    });
+      newSocket.on("user-online", ({ userId }) => {
+        setOnlineFriends((prev) => [...new Set([...prev, userId])]);
+      });
 
-    newSocket.on("all_unread_counts", (counts) => {
-      setUnreadCounts(counts);
-    });
-    return () => {
-      newSocket.off("user-online");
-      newSocket.off("user-offline");
-      newSocket.off("all_unread_counts");
-      newSocket.disconnect();
-    };
+      newSocket.on("user-offline", ({ userId }) => {
+        setOnlineFriends((prev) => prev.filter((id) => id !== userId));
+      });
+
+      newSocket.on("all_unread_counts", (counts) => {
+        setUnreadCounts(counts);
+      });
+
+      return () => {
+        newSocket.off("user-online");
+        newSocket.off("user-offline");
+        newSocket.off("all_unread_counts");
+        newSocket.disconnect();
+      };
+    } else {
+      // Handle case where there is no token (logged out state)
+      delete apiClient.defaults.headers.common["Authorization"];
+      setLogin(false);
+      setCurrentUser(null);
+      if (socket) {
+        socket.disconnect();
+      }
+      setSocket(null);
+      // 5. Mark auth as ready (for logged-out users)
+      setIsAuthReady(false);
+    }
   }, [token]);
+
+  // useEffect(() => {
+  //   if (token) {
+  //     apiClient.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+  //   } else {
+  //     delete apiClient.defaults.headers.common["Authorization"];
+  //   }
+  //   if (!token) {
+  //     if (socket) socket.disconnect();
+  //     setSocket(null);
+  //     setLogin(false);
+  //     return;
+  //   }
+  //   setLogin(true);
+  //   const newSocket = io(backendUrl, { auth: { token } });
+  //   setSocket(newSocket);
+  //   newSocket.on("connect", () => {
+  //     console.log("Socket connected");
+
+  //     fetchChats();
+  //     getOnlineStatus();
+  //   });
+
+  //   newSocket.on("user-online", ({ userId }) => {
+  //     setOnlineFriends((prevFriends) => {
+  //       if (!prevFriends.includes(userId)) {
+  //         return [...prevFriends, userId];
+  //       }
+  //       return prevFriends;
+  //     });
+  //   });
+
+  //   newSocket.on("user-offline", ({ userId }) => {
+  //     setOnlineFriends((prevFriends) =>
+  //       prevFriends.filter((id) => id !== userId)
+  //     );
+  //   });
+
+  //   newSocket.on("all_unread_counts", (counts) => {
+  //     setUnreadCounts(counts);
+  //   });
+
+  //   setIsAuthReady(true);
+  //   return () => {
+  //     newSocket.off("user-online");
+  //     newSocket.off("user-offline");
+  //     newSocket.off("all_unread_counts");
+  //     newSocket.disconnect();
+  //   };
+  // }, [token]);
 
   useEffect(() => {
     if (token) {

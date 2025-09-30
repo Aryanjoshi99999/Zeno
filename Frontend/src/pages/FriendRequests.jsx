@@ -16,6 +16,7 @@ const FriendRequests = () => {
     const getFriendRequests = async () => {
       try {
         const response = await apiClient.get("/api/user/get-friend-requests");
+        console.log("response", response);
         setFriendRequests(response.data.friendRequestsUserData);
       } catch (err) {
         console.error("Failed to load friend requests:", err);
@@ -28,6 +29,7 @@ const FriendRequests = () => {
     };
 
     if (isAuthReady) {
+      console.log("system systems");
       getFriendRequests();
     }
   }, [isAuthReady]);
