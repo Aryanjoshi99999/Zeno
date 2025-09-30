@@ -2,21 +2,13 @@ import React from "react";
 import axios from "axios";
 import { Link } from "react-router-dom";
 import "./UserProfileCard.css";
+import apiClient from "../../apiClient";
 
 const UserProfileCard = ({ user }) => {
   const handleSendFriendRequest = async () => {
     try {
-      const token = localStorage.getItem("token");
-      const userId = user._id;
-      const url = `http://localhost:5000/api/user/profile/friend-request/${userId}`;
-      const response = await axios.post(
-        url,
-        {},
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
+      const response = await apiClient.post(
+        `/api/user/profile/friend-request/${user._id}`
       );
 
       const message = response.data.message;
