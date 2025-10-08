@@ -8,6 +8,7 @@ import { useChat } from "../context/ChatContext";
 
 const FriendRequests = () => {
   const [friendRequests, setFriendRequests] = useState([]);
+
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
   const { isAuthReady } = useChat();
@@ -17,6 +18,7 @@ const FriendRequests = () => {
       try {
         const response = await apiClient.get("/api/user/get-friend-requests");
         console.log("response", response);
+
         setFriendRequests(response.data.friendRequestsUserData);
       } catch (err) {
         console.error("Failed to load friend requests:", err);

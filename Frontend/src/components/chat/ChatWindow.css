@@ -21,6 +21,10 @@
   padding: 20px;
   border-bottom: 1px solid rgba(0, 0, 0, 0.1);
   background: rgba(255, 255, 255, 0.3);
+  min-height: 70px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
 
 .message-list {
@@ -93,4 +97,13 @@
 .message-input-area button:hover {
   background-color: #7b25c8;
   box-shadow: 0 0 12px 4px rgba(150, 55, 182, 0.55);
+}
+
+/* Style for the typing indicator's container */
+.typing-status {
+  margin: 4px 0 0 0;
+  font-size: 0.9rem;
+  font-style: italic;
+  color: black; /* A green color, change as you like */
+  height: 1.2em; /* Reserve space to prevent jumping */
 }

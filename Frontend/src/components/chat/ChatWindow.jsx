@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useRef } from "react";
 import { useChat } from "../../context/ChatContext";
 import MessageBubble from "./MessageBubble";
 import MessageInput from "./MessageInput";
@@ -35,6 +35,8 @@ const ChatWindow = () => {
     <div className="chat-window-container">
       <div className="chat-header">
         <h3>{selectedUser.username}</h3>
+
+        {typingMessage && <p className="typing-status">{typingMessage}</p>}
       </div>
       <div className="message-list" onScroll={handleScroll} ref={messagesRef}>
         {messages.map((msg) => (
@@ -44,14 +46,6 @@ const ChatWindow = () => {
             isSent={msg?.sender?._id !== selectedUser._id}
           />
         ))}
-
-        {typingMessage && (
-          <MessageBubble
-            key="typing-indicator"
-            message={{ content: typingMessage }}
-            isSent={false}
-          />
-        )}
       </div>
       <MessageInput />
     </div>

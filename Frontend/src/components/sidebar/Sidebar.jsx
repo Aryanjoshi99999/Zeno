@@ -22,17 +22,23 @@ const Sidebar = () => {
     userChatMap,
     userIdUnrcMap,
     currentUser,
+    fetchFriends,
+    usersFriends,
   } = useChat();
 
-  const displayUsers =
-    onlineUsers.length > 0
-      ? onlineUsers
-      : [
-          {
-            _id: 1,
-            username: "Add some friends to chat",
-          },
-        ];
+  // const displayUsers =
+  //   onlineUsers.length > 0
+  //     ? onlineUsers
+  //     : [
+  //         {
+  //           _id: 1,
+  //           username: "Add some friends to chat",
+  //         },
+  //       ];
+
+  const searchClickedHandler = async () => {
+    setSearchClicked((searchClicked) => !searchClicked);
+  };
 
   return (
     <div className="sidebar-container">
@@ -44,9 +50,7 @@ const Sidebar = () => {
             placeholder="Search for people..."
             value={searchUser}
             onChange={searchPeople}
-            onClick={() => {
-              setSearchClicked((searchClicked) => !searchClicked);
-            }}
+            onClick={searchClickedHandler}
             className="searchbar-input"
           />
           {searchClicked && (
@@ -54,12 +58,17 @@ const Sidebar = () => {
               {searchResult.length > 0 ? (
                 (() => {
                   const searchedFriends = searchResult.filter((user) =>
-                    onlineUsers.some((friend) => friend._id === user._id)
+                    chats.some((chat) =>
+                      chat.participants.find(
+                        (p) => p._id === user._id && p._id !== currentUser._id
+                      )
+                    )
                   );
 
                   const globalUsers = searchResult.filter(
                     (user) =>
-                      !onlineUsers.some((friend) => friend._id === user._id)
+                      !usersFriends.some((friend) => friend._id === user._id) &&
+                      user._id !== currentUser?._id
                   );
 
                   return (
@@ -68,11 +77,14 @@ const Sidebar = () => {
                         <>
                           <p className="searchbar-friendtag">Friends</p>
                           {searchedFriends.map((user) => {
+                            const correspondingChat = chats.find((chat) =>
+                              chat.participants.some((p) => p._id === user._id)
+                            );
                             return (
                               <li
                                 className="searchbar-list-item"
                                 onClick={() => {
-                                  handleSelectedUser(user);
+                                  handleSelectedUser(correspondingChat, user);
                                   setSearchClicked(false);
                                   setSearchUser("");
                                 }}

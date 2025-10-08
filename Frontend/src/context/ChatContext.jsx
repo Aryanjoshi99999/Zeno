@@ -33,7 +33,7 @@ export const ChatProvider = ({ children }) => {
   const [username, setUserName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [onlineUsers, setOnlineUsers] = useState([]);
+  const [usersFriends, setUsersFriends] = useState([]);
   const [onlineFriends, setOnlineFriends] = useState([]); // online friends
   const [selectedUser, setSelectedUser] = useState(null);
   const [message, setMessage] = useState("");
@@ -106,6 +106,7 @@ export const ChatProvider = ({ children }) => {
       newSocket.on("connect", () => {
         console.log("Socket connected");
         fetchChats();
+        fetchFriends();
         getOnlineStatus();
         setIsAuthReady(true);
       });
@@ -313,9 +314,21 @@ export const ChatProvider = ({ children }) => {
       const { data } = await apiClient.get("/api/user/chats");
 
       setChats(data);
-      console.log(data);
+      console.log("chats", data);
     } catch (error) {
       console.error("Failed to fetch chats:", error);
+    }
+  }, [token]);
+
+  const fetchFriends = useCallback(async () => {
+    if (!token) return;
+    try {
+      const { data } = await apiClient.get("/api/user/friends");
+
+      setUsersFriends(data);
+      console.log("users friends", data);
+    } catch (error) {
+      console.error("Failed to fetch friends:", error);
     }
   }, [token]);
 
@@ -545,7 +558,7 @@ export const ChatProvider = ({ children }) => {
     handleSubmit,
     handleRegisterSubmit,
     handleLogout,
-    onlineUsers,
+
     selectedUser,
     setSelectedUser,
     handleSelectedUser,
@@ -570,6 +583,8 @@ export const ChatProvider = ({ children }) => {
     chats,
     currentUser,
     isAuthReady,
+    fetchFriends,
+    usersFriends,
   };
 
   return <ChatContext.Provider value={value}>{children}</ChatContext.Provider>;
