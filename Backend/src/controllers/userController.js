@@ -232,67 +232,67 @@ const getPOnlineUsersId = async (req, res) => {
 
 //
 
-const accessChat = async (req, res) => {
-  const { recipientId } = req.body;
-  const senderId = req.user._id;
+// const accessChat = async (req, res) => {
+//   const { recipientId } = req.body;
+//   const senderId = req.user._id;
 
-  if (!recipientId) {
-    return res
-      .status(400)
-      .json({ success: false, error: "recipientId is required" });
-  }
+//   if (!recipientId) {
+//     return res
+//       .status(400)
+//       .json({ success: false, error: "recipientId is required" });
+//   }
 
-  try {
-    let chat = await Chat.findOne({
-      type: "private",
-      participants: { $all: [senderId, recipientId], $size: 2 },
-    });
+//   try {
+//     let chat = await Chat.findOne({
+//       type: "private",
+//       participants: { $all: [senderId, recipientId], $size: 2 },
+//     });
 
-    if (!chat) {
-      chat = await Chat.create({
-        type: "private",
-        participants: [senderId, recipientId],
-      });
-    }
+//     if (!chat) {
+//       chat = await Chat.create({
+//         type: "private",
+//         participants: [senderId, recipientId],
+//       });
+//     }
 
-    // testing
+//     // testing
 
-    const redisKey = `messages:${chat._id.toString()}`;
-    const redisLen = await client.lLen(redisKey);
+//     const redisKey = `messages:${chat._id.toString()}`;
+//     const redisLen = await client.lLen(redisKey);
 
-    // doubt: "what if a new message came when the user was busy
-    // with another person and if he selects the another user(again)
-    // so is the new message will be updated in the cache"
+//     // doubt: "what if a new message came when the user was busy
+//     // with another person and if he selects the another user(again)
+//     // so is the new message will be updated in the cache"
 
-    try {
-      if (redisLen == 0) {
-        await client.lPush(redisKey, JSON.stringify({ type: "placeholder" }));
-        // await client.lTrim(redisKey, 0, 0); //  will the list exist with size  == 0
+//     try {
+//       if (redisLen == 0) {
+//         await client.lPush(redisKey, JSON.stringify({ type: "placeholder" }));
+//         // await client.lTrim(redisKey, 0, 0); //  will the list exist with size  == 0
 
-        console.log("redis list is empty");
-      } else {
-        console.log("redis list is not empty ");
-      }
-      return res.status(200).json({ success: true, chatId: chat._id });
-    } catch (err) {
-      console.error("Error is:", err);
-      return res.status(500).json({
-        success: false,
-        message: "Redis cache error",
-        error: err.message,
-      });
-    }
+//         console.log("redis list is empty");
+//       } else {
+//         console.log("redis list is not empty ");
+//       }
+//       return res.status(200).json({ success: true, chatId: chat._id });
+//     } catch (err) {
+//       console.error("Error is:", err);
+//       return res.status(500).json({
+//         success: false,
+//         message: "Redis cache error",
+//         error: err.message,
+//       });
+//     }
 
-    //
-    // if (recentMessages) {
-    //   return res.status(200).json({ success: true, recentMessages });
-    // } else {
-    //   return res.status(200).json({ success: true, chatId: chat._id });
-    // }
-  } catch (error) {
-    res.status(500).json({ success: false, error: "Server error" });
-  }
-};
+//     //
+//     // if (recentMessages) {
+//     //   return res.status(200).json({ success: true, recentMessages });
+//     // } else {
+//     //   return res.status(200).json({ success: true, chatId: chat._id });
+//     // }
+//   } catch (error) {
+//     res.status(500).json({ success: false, error: "Server error" });
+//   }
+// };
 
 // const getMessages = async (req, res) => {
 //   const { recipientId } = req.query;
@@ -362,7 +362,7 @@ const getMessages = async (req, res) => {
       filter._id = { $lt: new mongoose.Types.ObjectId(cursorObjId) };
       console.log("mildkladsf");
       console.log("BackEnd cursor objectId :" + cursorObjId);
-    } else if ((await client.lLen(key)) > 1) {
+    } else if ((await client.lLen(key)) > 0) {
       console.log(await client.lLen(key));
       const redisData = await client.lRange(
         key,
@@ -403,9 +403,9 @@ const getMessages = async (req, res) => {
 
     //
 
-    messages.forEach((msg) => {
-      console.log(msg.content);
-    });
+    // messages.forEach((msg) => {
+    //   console.log(msg.content);
+    // });
 
     res.status(200).json({ success: true, messages });
   } catch (err) {
@@ -629,7 +629,7 @@ module.exports = {
   updateProfile,
   getUsersFriends,
   getPOnlineUsersId,
-  accessChat,
+
   getMessages,
   sendFriendRequest,
   acceptFriendRequest,
