@@ -97,12 +97,10 @@ io.on("connection", async (socket) => {
     console.log(`User ${userId} joined chat ${chatId}`);
   });
 
-  // testing
   socket.on("leave_chat", (chatId) => {
     socket.leave(chatId);
     console.log(`User ${userId} left chat room ${chatId}`);
   });
-  //
 
   socket.on("send_message", async ({ chatId, content, type }) => {
     const senderId = socket.userId;
