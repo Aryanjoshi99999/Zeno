@@ -31,7 +31,6 @@ userRouter.get("/chats", protect, getUsersChats);
 userRouter.get("/friends", protect, getUsersFriends);
 //
 userRouter.get("/get-status", protect, getPOnlineUsersId);
-//userRouter.post("/access-chat-or-create", protect, accessChat);
 userRouter.get("/getMessages", protect, getMessages);
 
 userRouter.get("/find-user/", protect, userSearch);
