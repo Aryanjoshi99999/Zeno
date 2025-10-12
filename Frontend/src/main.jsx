@@ -3,12 +3,13 @@ import { createRoot } from "react-dom/client";
 import "./index.css";
 import App from "./App.jsx";
 import { BrowserRouter } from "react-router-dom";
-import Header from "./components/Header/Header.jsx";
+import { ChatProvider } from "./context/ChatContext.jsx";
 createRoot(document.getElementById("root")).render(
   <StrictMode>
     <BrowserRouter>
-      <Header />
-      <App />
+      <ChatProvider>
+        <App />
+      </ChatProvider>
     </BrowserRouter>
   </StrictMode>
 );

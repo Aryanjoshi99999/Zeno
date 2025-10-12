@@ -64,6 +64,11 @@ export const ChatProvider = ({ children }) => {
   const [isAuthReady, setIsAuthReady] = useState(false);
   //
 
+  //testing
+  const [isConnected, setIsConnected] = useState(socket?.connected || false);
+
+  //
+
   // Socket Connection Effect
 
   useEffect(() => {
@@ -120,7 +125,9 @@ export const ChatProvider = ({ children }) => {
       });
 
       newSocket.on("all_unread_counts", (counts) => {
+        console.log("all_unread_counts starts");
         setUnreadCounts(counts);
+        console.log("all_unread_counts ends");
       });
 
       return () => {
@@ -283,13 +290,19 @@ export const ChatProvider = ({ children }) => {
 
     socket.on("chat_updated", handleChatUpdated);
 
+    // testing
+    // this thing is working so...
+    if (socket.connected) {
+      socket.emit("get_all_unread_counts");
+    } else {
+      setTimeout(() => {
+        socket.emit("get_all_unread_counts");
+      }, 1000);
+    }
+    //
     return () => socket.off("chat_updated", handleChatUpdated);
   }, [socket]);
-
-  useEffect(() => {
-    if (!socket) return;
-    socket.emit("get_all_unread_counts");
-  }, [socket]);
+  //
 
   useEffect(() => {
     if (!socket || !token || !selectedUser || !cChat) return;
@@ -421,18 +434,6 @@ export const ChatProvider = ({ children }) => {
   );
 
   const sendMessage = async () => {
-    if (!chatId) {
-      alert("Missing chat ID ");
-      return;
-    }
-    if (!socket) {
-      alert("Missing socket");
-      return;
-    }
-    if (!message) {
-      alert("Missing message");
-      return;
-    }
     if (!chatId || !message.trim() || !socket) {
       alert("Missing chat ID or message.");
       return;
@@ -558,7 +559,6 @@ export const ChatProvider = ({ children }) => {
     handleSubmit,
     handleRegisterSubmit,
     handleLogout,
-
     selectedUser,
     setSelectedUser,
     handleSelectedUser,
