@@ -125,7 +125,7 @@ io.on("connection", async (socket) => {
         .lean();
       console.log("updated chat", updatedChat);
 
-      io.to(chatId).emit("chat_updated", updatedChat);
+      //io.to(chatId).emit("chat_updated", updatedChat);
 
       //
 
@@ -140,24 +140,30 @@ io.on("connection", async (socket) => {
 
       // testing
       // basically with the help of chatId we will get the receipient id or ids
+      // can use updated Chat here
       console.log("testing the unread message thing");
       const chat = await Chat.findById(chatId).select("participants");
       // console.log("chat: " + chat);
       chat.participants.forEach(async (id) => {
-        if (id.toString() != senderId) {
-          const ackey = `active_chat:${id.toString()}`; // need the the receipient's id
-          const activeChatId = await client.get(ackey); //
+        const participantId = id.toString();
+        io.to(participantId).emit("chat_updated", updatedChat);
+        if (participantId != senderId) {
+          const ackey = `active_chat:${participantId}`;
+          const activeChatId = await client.get(ackey);
           console.log("activeChatId " + activeChatId);
+
           if (activeChatId != chatId) {
-            const uncKey = `unread_counts:${id.toString()}`;
+            const uncKey = `unread_counts:${participantId}`;
             const newCount = await client.hIncrBy(uncKey, chatId, 1);
-            io.to(id.toString()).emit("unread_count_update", {
+            io.to(participantId).emit("unread_count_update", {
               chatId,
               newCount,
             });
+
             console.log(newCount);
           }
         }
+        // this this is not able to upadate the lastmessage for the unselected Id
         console.log("end fo the unread thing");
       });
 
