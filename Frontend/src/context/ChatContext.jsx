@@ -270,6 +270,7 @@ export const ChatProvider = ({ children }) => {
     if (!socket) return;
 
     const handleChatUpdated = (updatedChat) => {
+      console.log("handleChatUpdated");
       setChats((prevChats) => {
         const exists = prevChats.find((chat) => chat._id === updatedChat._id);
         let newChats;
@@ -286,9 +287,11 @@ export const ChatProvider = ({ children }) => {
           (a, b) => new Date(b.updatedAt) - new Date(a.updatedAt)
         );
       });
+      console.log("handleChatUpdated ends");
     };
-
+    console.log("chat updated system");
     socket.on("chat_updated", handleChatUpdated);
+    console.log("chat updated system ends");
 
     // testing
     // this thing is working so...
